@@ -1,7 +1,8 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface AccountInput {
   id?: string;
@@ -13,9 +14,13 @@ export interface AccountInput {
   openingCr?: number;
 }
 
-export async function getAccounts() {
+export const getAccounts = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const accounts = await prisma.account.findMany({
+      where: { companyId },
       orderBy: { code: "asc" },
       include: {
         journalLines: {
@@ -59,12 +64,16 @@ export async function getAccounts() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch accounts" };
   }
-}
+};
 
-export async function createAccount(data: AccountInput) {
+export const createAccount = async (data: AccountInput) => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
     const account = await prisma.account.create({
       data: {
+        companyId,
         code: data.code.trim(),
         name: data.name.trim(),
         type: data.type.trim(),
@@ -79,9 +88,9 @@ export async function createAccount(data: AccountInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create account" };
   }
-}
+};
 
-export async function updateAccount(id: string, data: AccountInput) {
+export const updateAccount = async (id: string, data: AccountInput) => {
   try {
     const account = await prisma.account.update({
       where: { id },
@@ -99,4 +108,4 @@ export async function updateAccount(id: string, data: AccountInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update account" };
   }
-}
+};

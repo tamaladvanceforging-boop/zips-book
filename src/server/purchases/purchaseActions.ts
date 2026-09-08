@@ -1,8 +1,9 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { postPurchaseBillToAccounting } from "@/lib/accountingEngine";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface PurchaseItemInput {
   itemId?: string;
@@ -41,9 +42,13 @@ export interface CreatePurchaseInput {
   items: PurchaseItemInput[];
 }
 
-export async function getPurchases() {
+export const getPurchases = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const bills = await prisma.purchaseBill.findMany({
+      where: { companyId },
       orderBy: { billDate: "desc" },
       include: {
         items: true,
@@ -55,11 +60,14 @@ export async function getPurchases() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch purchase bills" };
   }
-}
+};
 
-export async function createPurchase(data: CreatePurchaseInput) {
+export const createPurchase = async (data: CreatePurchaseInput) => {
   try {
-    const company = await prisma.companyProfile.findFirst();
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
     const prefix = company?.purchasePrefix || "PUR-";
     const nextNo = company?.nextPurchaseNo || 1;
 
@@ -68,6 +76,7 @@ export async function createPurchase(data: CreatePurchaseInput) {
 
     const purchase = await prisma.purchaseBill.create({
       data: {
+        companyId,
         voucherNo,
         vendorBillNo: data.vendorBillNo || null,
         billDate: date,
@@ -109,7 +118,7 @@ export async function createPurchase(data: CreatePurchaseInput) {
 
     // Update Company nextPurchaseNo counter
     if (company) {
-      await prisma.companyProfile.update({
+      await prisma.company.update({
         where: { id: company.id },
         data: { nextPurchaseNo: nextNo + 1 },
       });
@@ -117,6 +126,7 @@ export async function createPurchase(data: CreatePurchaseInput) {
 
     // Post Double Entry Journal & increase inventory
     await postPurchaseBillToAccounting({
+      companyId,
       purchaseBillId: purchase.id,
       voucherNo: purchase.voucherNo,
       vendorName: purchase.vendorName,
@@ -139,9 +149,9 @@ export async function createPurchase(data: CreatePurchaseInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create purchase bill" };
   }
-}
+};
 
-export async function deletePurchase(id: string) {
+export const deletePurchase = async (id: string) => {
   try {
     const bill = await prisma.purchaseBill.findUnique({
       where: { id },
@@ -174,4 +184,4 @@ export async function deletePurchase(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete purchase bill" };
   }
-}
+};

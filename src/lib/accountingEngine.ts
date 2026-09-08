@@ -1,7 +1,8 @@
-// Core Tally-Style Double-Entry Accounting Engine for ZIPS-Book
-import prisma from "./dbClient/prisma";
+// Core Tally-Style Double-Entry Accounting Engine for ZIPS-Book (Multi-Company ERP)
+import prisma from '@/lib/dbClient/dbClient';
 
 export interface InvoicePostingPayload {
+  companyId: string;
   invoiceId: string;
   invoiceNo: string;
   customerName: string;
@@ -15,6 +16,7 @@ export interface InvoicePostingPayload {
 }
 
 export interface PurchasePostingPayload {
+  companyId: string;
   purchaseBillId: string;
   voucherNo: string;
   vendorName: string;
@@ -28,10 +30,11 @@ export interface PurchasePostingPayload {
 }
 
 export interface PaymentPostingPayload {
+  companyId: string;
   voucherNo: string;
   date?: Date;
   paidTo: string;
-  paymentType: "VENDOR" | "EXPENSE";
+  paymentType: 'VENDOR' | 'EXPENSE';
   amount: number;
   mode: string;
   debitAccount: string;
@@ -41,10 +44,11 @@ export interface PaymentPostingPayload {
 }
 
 export interface ReceiptPostingPayload {
+  companyId: string;
   voucherNo: string;
   date?: Date;
   receivedFrom: string;
-  receiptType: "CUSTOMER" | "INCOME";
+  receiptType: 'CUSTOMER' | 'INCOME';
   amount: number;
   mode: string;
   debitAccount: string;
@@ -55,38 +59,39 @@ export interface ReceiptPostingPayload {
 /**
  * Post Sales Invoice to Day Book (Journal) and update inventory stock
  */
-export async function postSalesInvoiceToAccounting(payload: InvoicePostingPayload) {
+export const postSalesInvoiceToAccounting = async (payload: InvoicePostingPayload) => {
   const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
 
-  // 1. Create Double-Entry Journal
+  // 1. Create Double-Entry Journal scoped to company
   await prisma.journalEntry.create({
     data: {
-      voucherType: "Sales",
+      companyId: payload.companyId,
+      voucherType: 'Sales',
       voucherNo: payload.invoiceNo,
       referenceId: payload.invoiceId,
       entryDate: payload.date || new Date(),
-      narration: `Sales Invoice ${payload.invoiceNo} - ${payload.customerName}`,
+      narration: 'Sales Invoice ' + payload.invoiceNo + ' - ' + payload.customerName,
       lines: {
         create: [
           {
-            accountName: "Sundry Debtors",
+            accountName: 'Sundry Debtors',
             debit: payload.totalAmount,
             credit: 0,
-            narration: `Receivable from ${payload.customerName}`,
+            narration: 'Receivable from ' + payload.customerName,
           },
           {
-            accountName: "Sales Account",
+            accountName: 'Sales Account',
             debit: 0,
             credit: payload.taxableValue,
-            narration: `Sales Revenue (Taxable)`,
+            narration: 'Sales Revenue (Taxable)',
           },
           ...(totalTax > 0
             ? [
                 {
-                  accountName: "GST Payable",
+                  accountName: 'GST Payable',
                   debit: 0,
                   credit: totalTax,
-                  narration: `Output GST Liability`,
+                  narration: 'Output GST Liability',
                 },
               ]
             : []),
@@ -104,45 +109,46 @@ export async function postSalesInvoiceToAccounting(payload: InvoicePostingPayloa
       });
     }
   }
-}
+};
 
 /**
  * Post Purchase Bill to Day Book (Journal) and update inventory stock
  */
-export async function postPurchaseBillToAccounting(payload: PurchasePostingPayload) {
+export const postPurchaseBillToAccounting = async (payload: PurchasePostingPayload) => {
   const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
 
-  // 1. Create Double-Entry Journal
+  // 1. Create Double-Entry Journal scoped to company
   await prisma.journalEntry.create({
     data: {
-      voucherType: "Purchase",
+      companyId: payload.companyId,
+      voucherType: 'Purchase',
       voucherNo: payload.voucherNo,
       referenceId: payload.purchaseBillId,
       entryDate: payload.date || new Date(),
-      narration: `Purchase Bill ${payload.voucherNo} - ${payload.vendorName}`,
+      narration: 'Purchase Bill ' + payload.voucherNo + ' - ' + payload.vendorName,
       lines: {
         create: [
           {
-            accountName: "Purchase Account",
+            accountName: 'Purchase Account',
             debit: payload.taxableValue,
             credit: 0,
-            narration: `Purchase Cost (Taxable)`,
+            narration: 'Purchase Cost (Taxable)',
           },
           ...(totalTax > 0
             ? [
                 {
-                  accountName: "GST Input Credit",
+                  accountName: 'GST Input Credit',
                   debit: totalTax,
                   credit: 0,
-                  narration: `Input Tax Credit (ITC)`,
+                  narration: 'Input Tax Credit (ITC)',
                 },
               ]
             : []),
           {
-            accountName: "Sundry Creditors",
+            accountName: 'Sundry Creditors',
             debit: 0,
             credit: payload.totalAmount,
-            narration: `Payable to ${payload.vendorName}`,
+            narration: 'Payable to ' + payload.vendorName,
           },
         ],
       },
@@ -158,12 +164,12 @@ export async function postPurchaseBillToAccounting(payload: PurchasePostingPaylo
       });
     }
   }
-}
+};
 
 /**
  * Post Payment Voucher to Day Book (Journal)
  */
-export async function postPaymentVoucherToAccounting(payload: PaymentPostingPayload) {
+export const postPaymentVoucherToAccounting = async (payload: PaymentPostingPayload) => {
   const lines: { accountName: string; debit: number; credit: number; narration?: string }[] = [];
 
   // Debit target (Sundry Creditors or Expense Account)
@@ -171,7 +177,7 @@ export async function postPaymentVoucherToAccounting(payload: PaymentPostingPayl
     accountName: payload.debitAccount,
     debit: payload.amount,
     credit: 0,
-    narration: payload.narration || `Paid to ${payload.paidTo}`,
+    narration: payload.narration || 'Paid to ' + payload.paidTo,
   });
 
   // Credit source (Cash or Bank)
@@ -182,57 +188,59 @@ export async function postPaymentVoucherToAccounting(payload: PaymentPostingPayl
     accountName: payload.creditAccount,
     debit: 0,
     credit: netPaid,
-    narration: `Payment via ${payload.mode}`,
+    narration: 'Payment via ' + payload.mode,
   });
 
   if (tds > 0) {
     lines.push({
-      accountName: "TDS Payable",
+      accountName: 'TDS Payable',
       debit: 0,
       credit: tds,
-      narration: `TDS Deducted`,
+      narration: 'TDS Deducted',
     });
   }
 
   await prisma.journalEntry.create({
     data: {
-      voucherType: "Payment",
+      companyId: payload.companyId,
+      voucherType: 'Payment',
       voucherNo: payload.voucherNo,
       entryDate: payload.date || new Date(),
-      narration: payload.narration || `Payment to ${payload.paidTo}`,
+      narration: payload.narration || 'Payment to ' + payload.paidTo,
       lines: {
         create: lines,
       },
     },
   });
-}
+};
 
 /**
  * Post Receipt Voucher to Day Book (Journal)
  */
-export async function postReceiptVoucherToAccounting(payload: ReceiptPostingPayload) {
+export const postReceiptVoucherToAccounting = async (payload: ReceiptPostingPayload) => {
   await prisma.journalEntry.create({
     data: {
-      voucherType: "Receipt",
+      companyId: payload.companyId,
+      voucherType: 'Receipt',
       voucherNo: payload.voucherNo,
       entryDate: payload.date || new Date(),
-      narration: payload.narration || `Received from ${payload.receivedFrom}`,
+      narration: payload.narration || 'Received from ' + payload.receivedFrom,
       lines: {
         create: [
           {
             accountName: payload.debitAccount,
             debit: payload.amount,
             credit: 0,
-            narration: `Received via ${payload.mode}`,
+            narration: 'Received via ' + payload.mode,
           },
           {
             accountName: payload.creditAccount,
             debit: 0,
             credit: payload.amount,
-            narration: `Credit to ${payload.receivedFrom}`,
+            narration: 'Credit to ' + payload.receivedFrom,
           },
         ],
       },
     },
   });
-}
+};

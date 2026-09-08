@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
 import Header from "./Header";
 import { CommandPalette } from "./CommandPalette";
@@ -10,6 +11,17 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const pathname = usePathname();
+  const isAuthPage = pathname?.startsWith("/auth");
+
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       {/* Tally Go-To Command Dialog */}

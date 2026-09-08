@@ -1,7 +1,8 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface ItemInput {
   id?: string;
@@ -14,21 +15,29 @@ export interface ItemInput {
   stockQty?: number;
 }
 
-export async function getItems() {
+export const getItems = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const items = await prisma.item.findMany({
+      where: { companyId },
       orderBy: { code: "asc" },
     });
     return { success: true, data: items };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch items" };
   }
-}
+};
 
-export async function createItem(data: ItemInput) {
+export const createItem = async (data: ItemInput) => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
     const item = await prisma.item.create({
       data: {
+        companyId,
         code: data.code.toUpperCase().trim(),
         name: data.name.trim(),
         hsnSac: data.hsnSac.trim(),
@@ -44,9 +53,9 @@ export async function createItem(data: ItemInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create item" };
   }
-}
+};
 
-export async function updateItem(id: string, data: ItemInput) {
+export const updateItem = async (id: string, data: ItemInput) => {
   try {
     const item = await prisma.item.update({
       where: { id },
@@ -65,9 +74,9 @@ export async function updateItem(id: string, data: ItemInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update item" };
   }
-}
+};
 
-export async function deleteItem(id: string) {
+export const deleteItem = async (id: string) => {
   try {
     await prisma.item.delete({ where: { id } });
     revalidatePath("/masters/items");
@@ -75,4 +84,4 @@ export async function deleteItem(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete item" };
   }
-}
+};

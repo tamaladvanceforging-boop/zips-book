@@ -1,4 +1,4 @@
-// Prisma schema file for ZIPS-Book (Tally-like GST Billing & Accounting)
+// Prisma schema file for ZIPS-Book (Tally-like GST Billing & Enterprise ERP)
 
 generator client {
     provider = "prisma-client"
@@ -9,37 +9,89 @@ datasource db {
     provider = "sqlite"
 }
 
-model CompanyProfile {
-    id                 String   @id @default(cuid())
-    name               String   @default("Your Company Pvt Ltd")
-    addressLine1       String   @default("123 Business Park")
-    addressLine2       String   @default("Sector 5")
-    city               String   @default("Kolkata")
-    state              String   @default("West Bengal")
-    stateCode          String   @default("19")
-    pincode            String   @default("700001")
-    gstin              String   @default("19AAAAA0000A1Z5")
-    pan                String   @default("AAAAA0000A")
-    email              String   @default("info@yourcompany.com")
-    phone              String   @default("9800000000")
-    bankName           String   @default("State Bank of India")
-    bankAccountNo      String   @default("00000000000")
-    ifscCode           String   @default("SBIN0000000")
-    invoicePrefix      String   @default("INV-")
-    nextInvoiceNo      Int      @default(1)
-    purchasePrefix     String   @default("PUR-")
-    nextPurchaseNo     Int      @default(1)
-    paymentPrefix      String   @default("PMT-")
-    nextPaymentNo      Int      @default(1)
-    receiptPrefix      String   @default("RCT-")
-    nextReceiptNo      Int      @default(1)
-    createdAt          DateTime @default(now())
-    updatedAt          DateTime @updatedAt
+model User {
+    id          String        @id @default(cuid())
+    name        String
+    email       String        @unique
+    password    String        // Hashed via scrypt
+    role        String        @default("ADMIN") // ADMIN, ACCOUNTANT, OPERATOR
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+    sessions    Session[]
+    companies   UserCompany[]
+}
+
+model Session {
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    token     String   @unique
+    expiresAt DateTime
+    createdAt DateTime @default(now())
+}
+
+model Company {
+    id                 String           @id @default(cuid())
+    name               String
+    mailingName        String?
+    addressLine1       String           @default("123 Business Park")
+    addressLine2       String?
+    city               String           @default("Kolkata")
+    state              String           @default("West Bengal")
+    stateCode          String           @default("19")
+    pincode            String           @default("700001")
+    country            String           @default("India")
+    currencySymbol     String           @default("₹")
+    currencyName       String           @default("INR")
+    financialYearFrom  DateTime         @default(now())
+    booksBeginningFrom DateTime         @default(now())
+    gstin              String           @default("19AAAAA0000A1Z5")
+    pan                String           @default("AAAAA0000A")
+    email              String           @default("info@yourcompany.com")
+    phone              String           @default("9800000000")
+    bankName           String           @default("State Bank of India")
+    bankAccountNo      String           @default("00000000000")
+    ifscCode           String           @default("SBIN0000000")
+    bankBranch         String           @default("Main Branch")
+    invoicePrefix      String           @default("INV-")
+    nextInvoiceNo      Int              @default(1)
+    purchasePrefix     String           @default("PUR-")
+    nextPurchaseNo     Int              @default(1)
+    paymentPrefix      String           @default("PMT-")
+    nextPaymentNo      Int              @default(1)
+    receiptPrefix      String           @default("RCT-")
+    nextReceiptNo      Int              @default(1)
+    createdAt          DateTime         @default(now())
+    updatedAt          DateTime         @updatedAt
+    users              UserCompany[]
+    accounts           Account[]
+    items              Item[]
+    customers          Customer[]
+    vendors            Vendor[]
+    invoices           Invoice[]
+    purchaseBills      PurchaseBill[]
+    payments           PaymentVoucher[]
+    receipts           ReceiptVoucher[]
+    journalEntries     JournalEntry[]
+}
+
+model UserCompany {
+    id        String   @id @default(cuid())
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    companyId String
+    company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    role      String   @default("ADMIN") // ADMIN, ACCOUNTANT, OPERATOR
+    createdAt DateTime @default(now())
+
+    @@unique([userId, companyId])
 }
 
 model Account {
     id           String        @id @default(cuid())
-    code         String        @unique
+    companyId    String
+    company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    code         String
     name         String
     type         String        // Asset, Liability, Equity, Income, Expense
     category     String        // Current Assets, Duties & Taxes, Current Liabilities, Capital, Sales Accounts, Purchase Accounts, Indirect Expenses
@@ -49,11 +101,15 @@ model Account {
     createdAt    DateTime      @default(now())
     updatedAt    DateTime      @updatedAt
     journalLines JournalLine[]
+
+    @@unique([companyId, code])
 }
 
 model Item {
     id            String             @id @default(cuid())
-    code          String             @unique
+    companyId     String
+    company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    code          String
     name          String
     hsnSac        String
     unit          String             @default("PCS")
@@ -64,11 +120,15 @@ model Item {
     updatedAt     DateTime           @updatedAt
     invoiceItems  InvoiceItem[]
     purchaseItems PurchaseBillItem[]
+
+    @@unique([companyId, code])
 }
 
 model Customer {
     id             String           @id @default(cuid())
-    code           String           @unique
+    companyId      String
+    company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    code           String
     name           String
     address        String
     state          String
@@ -81,11 +141,15 @@ model Customer {
     updatedAt      DateTime         @updatedAt
     invoices       Invoice[]
     receipts       ReceiptVoucher[]
+
+    @@unique([companyId, code])
 }
 
 model Vendor {
     id             String           @id @default(cuid())
-    code           String           @unique
+    companyId      String
+    company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    code           String
     name           String
     address        String
     state          String
@@ -102,11 +166,15 @@ model Vendor {
     updatedAt      DateTime         @updatedAt
     purchaseBills  PurchaseBill[]
     payments       PaymentVoucher[]
+
+    @@unique([companyId, code])
 }
 
 model Invoice {
     id                String           @id @default(cuid())
-    invoiceNo         String           @unique
+    companyId         String
+    company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    invoiceNo         String
     invoiceDate       DateTime         @default(now())
     dueDate           DateTime?
     customerId        String?
@@ -130,6 +198,8 @@ model Invoice {
     updatedAt         DateTime         @updatedAt
     items             InvoiceItem[]
     receipts          ReceiptVoucher[]
+
+    @@unique([companyId, invoiceNo])
 }
 
 model InvoiceItem {
@@ -154,7 +224,9 @@ model InvoiceItem {
 
 model PurchaseBill {
     id              String             @id @default(cuid())
-    voucherNo       String             @unique
+    companyId       String
+    company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    voucherNo       String
     vendorBillNo    String?
     billDate        DateTime           @default(now())
     vendorId        String?
@@ -178,6 +250,8 @@ model PurchaseBill {
     updatedAt       DateTime           @updatedAt
     items           PurchaseBillItem[]
     payments        PaymentVoucher[]
+
+    @@unique([companyId, voucherNo])
 }
 
 model PurchaseBillItem {
@@ -202,7 +276,9 @@ model PurchaseBillItem {
 
 model PaymentVoucher {
     id             String        @id @default(cuid())
-    voucherNo      String        @unique
+    companyId      String
+    company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    voucherNo      String
     date           DateTime      @default(now())
     paymentType    String        @default("VENDOR") // VENDOR, EXPENSE
     vendorId       String?
@@ -225,11 +301,15 @@ model PaymentVoucher {
     netAmount      Float         @default(0.0)
     createdAt      DateTime      @default(now())
     updatedAt      DateTime      @updatedAt
+
+    @@unique([companyId, voucherNo])
 }
 
 model ReceiptVoucher {
     id            String    @id @default(cuid())
-    voucherNo     String    @unique
+    companyId     String
+    company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    voucherNo     String
     date          DateTime  @default(now())
     receiptType   String    @default("CUSTOMER") // CUSTOMER, INCOME
     customerId    String?
@@ -246,10 +326,14 @@ model ReceiptVoucher {
     creditAccount String    @default("Sundry Debtors")
     createdAt     DateTime  @default(now())
     updatedAt     DateTime  @updatedAt
+
+    @@unique([companyId, voucherNo])
 }
 
 model JournalEntry {
     id          String        @id @default(cuid())
+    companyId   String
+    company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
     entryDate   DateTime      @default(now())
     voucherType String        // Sales, Purchase, Payment, Receipt, Journal, Contra
     voucherNo   String

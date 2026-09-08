@@ -1,7 +1,8 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface VendorInput {
   id?: string;
@@ -20,9 +21,13 @@ export interface VendorInput {
   openingBalance?: number;
 }
 
-export async function getVendors() {
+export const getVendors = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const vendors = await prisma.vendor.findMany({
+      where: { companyId },
       orderBy: { code: "asc" },
       include: {
         purchaseBills: {
@@ -50,12 +55,16 @@ export async function getVendors() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch vendors" };
   }
-}
+};
 
-export async function createVendor(data: VendorInput) {
+export const createVendor = async (data: VendorInput) => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
     const vendor = await prisma.vendor.create({
       data: {
+        companyId,
         code: data.code.toUpperCase().trim(),
         name: data.name.trim(),
         address: data.address.trim(),
@@ -77,9 +86,9 @@ export async function createVendor(data: VendorInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create vendor" };
   }
-}
+};
 
-export async function updateVendor(id: string, data: VendorInput) {
+export const updateVendor = async (id: string, data: VendorInput) => {
   try {
     const vendor = await prisma.vendor.update({
       where: { id },
@@ -104,9 +113,9 @@ export async function updateVendor(id: string, data: VendorInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update vendor" };
   }
-}
+};
 
-export async function deleteVendor(id: string) {
+export const deleteVendor = async (id: string) => {
   try {
     await prisma.vendor.delete({ where: { id } });
     revalidatePath("/masters/vendors");
@@ -114,4 +123,4 @@ export async function deleteVendor(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete vendor" };
   }
-}
+};

@@ -1,7 +1,8 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface CustomerInput {
   id?: string;
@@ -16,9 +17,13 @@ export interface CustomerInput {
   openingBalance?: number;
 }
 
-export async function getCustomers() {
+export const getCustomers = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const customers = await prisma.customer.findMany({
+      where: { companyId },
       orderBy: { code: "asc" },
       include: {
         invoices: {
@@ -46,12 +51,16 @@ export async function getCustomers() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch customers" };
   }
-}
+};
 
-export async function createCustomer(data: CustomerInput) {
+export const createCustomer = async (data: CustomerInput) => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
     const customer = await prisma.customer.create({
       data: {
+        companyId,
         code: data.code.toUpperCase().trim(),
         name: data.name.trim(),
         address: data.address.trim(),
@@ -69,9 +78,9 @@ export async function createCustomer(data: CustomerInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create customer" };
   }
-}
+};
 
-export async function updateCustomer(id: string, data: CustomerInput) {
+export const updateCustomer = async (id: string, data: CustomerInput) => {
   try {
     const customer = await prisma.customer.update({
       where: { id },
@@ -92,9 +101,9 @@ export async function updateCustomer(id: string, data: CustomerInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update customer" };
   }
-}
+};
 
-export async function deleteCustomer(id: string) {
+export const deleteCustomer = async (id: string) => {
   try {
     await prisma.customer.delete({ where: { id } });
     revalidatePath("/masters/customers");
@@ -102,4 +111,4 @@ export async function deleteCustomer(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete customer" };
   }
-}
+};

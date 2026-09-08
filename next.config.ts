@@ -4,6 +4,7 @@ import "./src/lib/env/serverEnv";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: "standalone",
   reactCompiler: true,
   typedRoutes: true,
 };

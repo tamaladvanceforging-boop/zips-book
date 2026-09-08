@@ -5,8 +5,8 @@ export const serverEnv = createEnv({
   server: {
     DATABASE_URL: z
       .string()
-      .startsWith("file:./", {
-        error: "DATABASE_URL must start with file:./",
+      .startsWith("file:", {
+        error: "DATABASE_URL must start with file:",
       })
       .min(1, { error: "DATABASE_URL is required" }),
     NEXT_TELEMETRY_DISABLED: z.enum(["1", "0"]).optional(),

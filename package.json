@@ -2,11 +2,14 @@
   "name": "zips-book",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "electron:dev": "concurrently -k -s first \"next dev\" \"electron .\"",
+    "electron:start": "electron .",
+    "electron:build": "bun run build && electron-builder --win",
     "lint": "eslint && echo \"✓ Lint passed\"",
     "lint:check": "next typegen && tsc --noEmit && echo \"✓ Type check passed\" && eslint && echo \"✓ Lint passed\"",
     "migrate": "prisma migrate dev && prisma generate",
@@ -47,6 +50,9 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "babel-plugin-react-compiler": "^1.0.0",
+    "concurrently": "^10.0.5",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.4",
     "playwright": "^1.63.0",
@@ -68,5 +74,39 @@
   },
   "author": "Tamal Roy Chowdhury",
   "license": "UNLICENSED",
-  "homepage": "https://github.com/tamaladvanceforging-boop/zips-book"
+  "homepage": "https://github.com/tamaladvanceforging-boop/zips-book",
+  "build": {
+    "appId": "com.zipsbook.erp",
+    "productName": "ZIPS-Book Enterprise ERP",
+    "copyright": "Copyright © 2026 Tamal Roy Chowdhury. All rights reserved.",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      ".next/standalone/**/*",
+      "public/**/*",
+      "prisma/dev.db"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ZIPS-Book ERP"
+    }
+  }
 }

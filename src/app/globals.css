@@ -131,3 +131,58 @@
     @apply font-sans;
   }
 }
+
+/* React Toastify Modern Glassmorphic ERP Styling */
+.Toastify__toast-container {
+  z-index: 99999 !important;
+  width: 400px !important;
+  max-width: 90vw !important;
+}
+
+.Toastify__toast {
+  border-radius: 1rem !important;
+  font-family: inherit !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  padding: 14px 18px !important;
+  margin-bottom: 12px !important;
+}
+
+.Toastify__toast-theme--dark {
+  background: rgba(15, 18, 28, 0.95) !important;
+  color: #f3f4f6 !important;
+}
+
+.Toastify__toast--success {
+  border-left: 4px solid #10b981 !important;
+}
+
+.Toastify__toast--error {
+  border-left: 4px solid #ef4444 !important;
+}
+
+.Toastify__toast--info {
+  border-left: 4px solid #6366f1 !important;
+}
+
+.Toastify__toast--warning {
+  border-left: 4px solid #f59e0b !important;
+}
+
+.Toastify__progress-bar--success {
+  background: linear-gradient(to right, #10b981, #059669) !important;
+}
+
+.Toastify__progress-bar--error {
+  background: linear-gradient(to right, #ef4444, #dc2626) !important;
+}
+
+.Toastify__progress-bar--info {
+  background: linear-gradient(to right, #6366f1, #4f46e5) !important;
+}
+
+.Toastify__progress-bar--warning {
+  background: linear-gradient(to right, #f59e0b, #d97706) !important;
+}
+

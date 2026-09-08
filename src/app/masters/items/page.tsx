@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getItems, createItem, updateItem, deleteItem, ItemInput } from "@/server/items/itemActions";
 import { formatINR } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { Package, Plus, Search, Edit2, Trash2, X, RefreshCw } from "lucide-react";
 
-export default function ItemsPage() {
+const ItemsPage = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -70,7 +71,12 @@ export default function ItemsPage() {
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete ${name}?`)) return;
     startTransition(async () => {
-      await deleteItem(id);
+      const res = await deleteItem(id);
+      if (res.success) {
+        notify.success(`Item ${name} deleted.`);
+      } else {
+        notify.error("Failed to delete item.");
+      }
       loadItems();
     });
   };
@@ -78,13 +84,19 @@ export default function ItemsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
+      let res;
       if (isEditing && activeId) {
-        await updateItem(activeId, formData);
+        res = await updateItem(activeId, formData);
       } else {
-        await createItem(formData);
+        res = await createItem(formData);
       }
-      setModalOpen(false);
-      loadItems();
+      if (res?.success) {
+        notify.success(`Item ${formData.name} saved successfully!`);
+        setModalOpen(false);
+        loadItems();
+      } else {
+        notify.error(res?.error || "Failed to save item.");
+      }
     });
   };
 
@@ -349,4 +361,6 @@ export default function ItemsPage() {
       )}
     </div>
   );
-}
+};
+
+export default ItemsPage;

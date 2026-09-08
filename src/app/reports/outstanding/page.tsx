@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { getOutstanding } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { Clock, Users, Factory, ArrowUpRight, ArrowDownLeft, RefreshCw } from "lucide-react";
 
-export default function OutstandingPage() {
+const OutstandingPage = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +36,45 @@ export default function OutstandingPage() {
   const receivables = data?.receivables || [];
   const payables = data?.payables || [];
 
+  const exportOptions = {
+    filename: `outstanding-statement-${formatInputDate(new Date())}`,
+    title: "Outstanding Receivables & Payables Statement",
+    subtitle: `Total Receivable: ${formatINR(data?.totalReceivable || 0)} | Total Payable: ${formatINR(data?.totalPayable || 0)}`,
+    sheetName: "Outstanding",
+    headers: [
+      "Party Type",
+      "Code",
+      "Party Name",
+      "Phone",
+      "Total Invoiced/Purchased (₹)",
+      "Total Received/Paid (₹)",
+      "Credit/Debit Notes (₹)",
+      "Net Outstanding (₹)",
+    ],
+    data: [
+      ...receivables.map((r: any) => [
+        "Debtor (Customer)",
+        r.code,
+        r.name,
+        r.phone || "N/A",
+        r.totalInvoiced,
+        r.totalReceived,
+        r.totalCreditNotes || 0,
+        r.outstanding,
+      ]),
+      ...payables.map((p: any) => [
+        "Creditor (Vendor)",
+        p.code,
+        p.name,
+        p.phone || "N/A",
+        p.totalPurchased,
+        p.totalPaid,
+        p.totalDebitNotes || 0,
+        p.outstanding,
+      ]),
+    ],
+  };
+
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
@@ -46,6 +87,10 @@ export default function OutstandingPage() {
           <p className="text-xs text-muted-foreground">
             Real-time aging and balance ledgers for Customer Receivables (Sundry Debtors) and Vendor Payables (Sundry Creditors).
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ExportButtonGroup options={exportOptions} disabled={!data} />
         </div>
       </div>
 
@@ -231,4 +276,6 @@ export default function OutstandingPage() {
       </div>
     </div>
   );
-}
+};
+
+export default OutstandingPage;

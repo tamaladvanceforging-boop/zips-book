@@ -1,8 +1,9 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { postPaymentVoucherToAccounting, postReceiptVoucherToAccounting } from "@/lib/accountingEngine";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface CreatePaymentInput {
   voucherNo?: string;
@@ -40,9 +41,13 @@ export interface CreateReceiptInput {
   creditAccount?: string;
 }
 
-export async function getPaymentVouchers() {
+export const getPaymentVouchers = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const vouchers = await prisma.paymentVoucher.findMany({
+      where: { companyId },
       orderBy: { date: "desc" },
       include: {
         vendor: true,
@@ -53,11 +58,15 @@ export async function getPaymentVouchers() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch payment vouchers" };
   }
-}
+};
 
-export async function getReceiptVouchers() {
+export const getReceiptVouchers = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const vouchers = await prisma.receiptVoucher.findMany({
+      where: { companyId },
       orderBy: { date: "desc" },
       include: {
         customer: true,
@@ -68,11 +77,14 @@ export async function getReceiptVouchers() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch receipt vouchers" };
   }
-}
+};
 
-export async function createPaymentVoucher(data: CreatePaymentInput) {
+export const createPaymentVoucher = async (data: CreatePaymentInput) => {
   try {
-    const company = await prisma.companyProfile.findFirst();
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
     const prefix = company?.paymentPrefix || "PMT-";
     const nextNo = company?.nextPaymentNo || 1;
 
@@ -89,6 +101,7 @@ export async function createPaymentVoucher(data: CreatePaymentInput) {
 
     const voucher = await prisma.paymentVoucher.create({
       data: {
+        companyId,
         voucherNo,
         date,
         paymentType: data.paymentType,
@@ -112,7 +125,7 @@ export async function createPaymentVoucher(data: CreatePaymentInput) {
     });
 
     if (company) {
-      await prisma.companyProfile.update({
+      await prisma.company.update({
         where: { id: company.id },
         data: { nextPaymentNo: nextNo + 1 },
       });
@@ -130,6 +143,7 @@ export async function createPaymentVoucher(data: CreatePaymentInput) {
 
     // Post Double Entry Journal
     await postPaymentVoucherToAccounting({
+      companyId,
       voucherNo: voucher.voucherNo,
       date: voucher.date,
       paidTo: voucher.paidTo,
@@ -151,11 +165,14 @@ export async function createPaymentVoucher(data: CreatePaymentInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create payment voucher" };
   }
-}
+};
 
-export async function createReceiptVoucher(data: CreateReceiptInput) {
+export const createReceiptVoucher = async (data: CreateReceiptInput) => {
   try {
-    const company = await prisma.companyProfile.findFirst();
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
     const prefix = company?.receiptPrefix || "RCT-";
     const nextNo = company?.nextReceiptNo || 1;
 
@@ -168,6 +185,7 @@ export async function createReceiptVoucher(data: CreateReceiptInput) {
 
     const voucher = await prisma.receiptVoucher.create({
       data: {
+        companyId,
         voucherNo,
         date,
         receiptType: data.receiptType,
@@ -185,7 +203,7 @@ export async function createReceiptVoucher(data: CreateReceiptInput) {
     });
 
     if (company) {
-      await prisma.companyProfile.update({
+      await prisma.company.update({
         where: { id: company.id },
         data: { nextReceiptNo: nextNo + 1 },
       });
@@ -203,6 +221,7 @@ export async function createReceiptVoucher(data: CreateReceiptInput) {
 
     // Post Double Entry Journal
     await postReceiptVoucherToAccounting({
+      companyId,
       voucherNo: voucher.voucherNo,
       date: voucher.date,
       receivedFrom: voucher.receivedFrom,
@@ -223,4 +242,4 @@ export async function createReceiptVoucher(data: CreateReceiptInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create receipt voucher" };
   }
-}
+};

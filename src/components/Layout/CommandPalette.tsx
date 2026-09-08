@@ -21,6 +21,11 @@ import {
   TrendingUp,
   Coins,
   X,
+  PlusCircle,
+  Settings2,
+  ArrowLeftRight,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 
 interface CommandItem {
@@ -32,18 +37,26 @@ interface CommandItem {
 }
 
 const commands: CommandItem[] = [
-  { title: "Dashboard Overview", category: "General", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Company Profile & Numbering", category: "General", href: "/company", icon: Building2 },
-  { title: "Item Master (Inventory)", category: "Masters", href: "/masters/items", icon: Package },
-  { title: "Customer Master (Debtors)", category: "Masters", href: "/masters/customers", icon: Users },
-  { title: "Vendor Master (Creditors)", category: "Masters", href: "/masters/vendors", icon: Factory },
+  { title: "Enterprise Gateway (Dashboard)", category: "Gateway", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Select Company", category: "Gateway", href: "/companies", shortcut: "F1", icon: Building2 },
+  { title: "Create New Company", category: "Gateway", href: "/companies/create", shortcut: "F3", icon: PlusCircle },
+  { title: "Alter Company Profile", category: "Gateway", href: "/company", shortcut: "Alt+F3", icon: Settings2 },
+  { title: "Item Master (Stock & HSN)", category: "Masters", href: "/masters/items", icon: Package },
+  { title: "Customer Master (Sundry Debtors)", category: "Masters", href: "/masters/customers", icon: Users },
+  { title: "Vendor Master (Sundry Creditors)", category: "Masters", href: "/masters/vendors", icon: Factory },
   { title: "Chart of Accounts (COA)", category: "Masters", href: "/masters/accounts", icon: BookOpen },
-  { title: "Create Sales Invoice (Tax Invoice)", category: "Vouchers", href: "/vouchers/sales", shortcut: "F8", icon: FileSpreadsheet },
-  { title: "Create Purchase Bill", category: "Vouchers", href: "/vouchers/purchase", shortcut: "F9", icon: Receipt },
+  { title: "Record Contra Voucher (Bank / Cash)", category: "Vouchers", href: "/vouchers/contra", shortcut: "F4", icon: ArrowLeftRight },
   { title: "Record Payment Voucher", category: "Vouchers", href: "/vouchers/payment", shortcut: "F5", icon: CreditCard },
   { title: "Record Receipt Voucher", category: "Vouchers", href: "/vouchers/receipt", shortcut: "F6", icon: Wallet },
+  { title: "Record Journal Voucher (Adjustment)", category: "Vouchers", href: "/vouchers/journal", shortcut: "F7", icon: BookOpen },
+  { title: "Create Sales Invoice (Tax Invoice)", category: "Vouchers", href: "/vouchers/sales", shortcut: "F8", icon: FileSpreadsheet },
+  { title: "Create Purchase Bill", category: "Vouchers", href: "/vouchers/purchase", shortcut: "F9", icon: Receipt },
+  { title: "Record Credit Note (Sales Return)", category: "Vouchers", href: "/vouchers/credit-note", shortcut: "Alt+F6", icon: Undo2 },
+  { title: "Record Debit Note (Purchase Return)", category: "Vouchers", href: "/vouchers/debit-note", shortcut: "Alt+F5", icon: Redo2 },
   { title: "Sales Register", category: "Registers", href: "/registers/sales", icon: BookMarked },
   { title: "Purchase Register", category: "Registers", href: "/registers/purchase", icon: BookMarked },
+  { title: "Credit Note Register", category: "Registers", href: "/registers/credit-notes", icon: Undo2 },
+  { title: "Debit Note Register", category: "Registers", href: "/registers/debit-notes", icon: Redo2 },
   { title: "Day Book (General Journal)", category: "Registers", href: "/registers/daybook", icon: BookOpen },
   { title: "Outstanding (Receivable / Payable)", category: "Reports", href: "/reports/outstanding", icon: Clock },
   { title: "GST Summary (GSTR-1 & 3B)", category: "Reports", href: "/reports/gst-summary", icon: Landmark },
@@ -52,35 +65,71 @@ const commands: CommandItem[] = [
   { title: "Balance Sheet", category: "Reports", href: "/reports/balance-sheet", icon: Coins },
 ];
 
-export function CommandPalette() {
+export const CommandPalette = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+K or Alt+G (Tally shortcut)
+      // Ctrl+K or Alt+G (Quick Jump shortcut)
       if ((e.ctrlKey && e.key.toLowerCase() === "k") || (e.altKey && e.key.toLowerCase() === "g")) {
         e.preventDefault();
         setOpen((prev) => !prev);
+        return;
       }
       if (e.key === "Escape") {
         setOpen(false);
+        return;
       }
-      // Direct voucher function keys
+
+      // Alt+F3: Alter Company
+      if (e.altKey && e.key === "F3") {
+        e.preventDefault();
+        router.push("/company" as any);
+        return;
+      }
+
+      // Alt+F5: Debit Note
+      if (e.altKey && e.key === "F5") {
+        e.preventDefault();
+        router.push("/vouchers/debit-note" as any);
+        return;
+      }
+
+      // Alt+F6: Credit Note
+      if (e.altKey && e.key === "F6") {
+        e.preventDefault();
+        router.push("/vouchers/credit-note" as any);
+        return;
+      }
+
+      // Direct Function keys
       if (!e.ctrlKey && !e.altKey && !e.metaKey) {
-        if (e.key === "F8") {
+        if (e.key === "F1") {
           e.preventDefault();
-          router.push("/vouchers/sales");
-        } else if (e.key === "F9") {
+          router.push("/companies" as any);
+        } else if (e.key === "F3") {
           e.preventDefault();
-          router.push("/vouchers/purchase");
+          router.push("/companies/create" as any);
+        } else if (e.key === "F4") {
+          e.preventDefault();
+          router.push("/vouchers/contra" as any);
         } else if (e.key === "F5") {
           e.preventDefault();
-          router.push("/vouchers/payment");
+          router.push("/vouchers/payment" as any);
         } else if (e.key === "F6") {
           e.preventDefault();
-          router.push("/vouchers/receipt");
+          router.push("/vouchers/receipt" as any);
+        } else if (e.key === "F7") {
+          e.preventDefault();
+          router.push("/vouchers/journal" as any);
+        } else if (e.key === "F8") {
+          e.preventDefault();
+          router.push("/vouchers/sales" as any);
+        } else if (e.key === "F9") {
+          e.preventDefault();
+          router.push("/vouchers/purchase" as any);
         }
       }
     };
@@ -98,85 +147,83 @@ export function CommandPalette() {
       (c.shortcut && c.shortcut.toLowerCase().includes(query.toLowerCase()))
   );
 
-  const navigateTo = (href: string) => {
+  const handleSelect = (href: string) => {
     setOpen(false);
-    setQuery("");
     router.push(href as any);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-background/80 backdrop-blur-xs p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-        {/* Search header */}
-        <div className="flex items-center border-b border-border px-3 py-2.5">
-          <Search className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4 animate-in fade-in-0 duration-150">
+      <div className="w-full max-w-xl rounded-2xl border border-border bg-card shadow-2xl overflow-hidden flex flex-col">
+        {/* Search Input Bar */}
+        <div className="flex items-center px-4 border-b border-border h-12 bg-muted/30">
+          <Search className="h-4 w-4 text-emerald-500 mr-2 shrink-0" />
           <input
-            autoFocus
+            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Go To (Type page, voucher, or press F5, F6, F8, F9)..."
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            placeholder="Type to search or jump to voucher, report, or company... (Alt+G)"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            autoFocus
           />
           <button
             onClick={() => setOpen(false)}
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Results List */}
-        <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+        {/* Command List */}
+        <div className="max-h-96 overflow-y-auto p-2 space-y-1">
           {filtered.length === 0 ? (
-            <div className="py-6 text-center text-xs text-muted-foreground">No matching views found.</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No matching modules or vouchers found.
+            </div>
           ) : (
             filtered.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.href}
-                  onClick={() => navigateTo(item.href)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-accent group cursor-pointer"
+                  onClick={() => handleSelect(item.href)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 text-foreground transition-colors group cursor-pointer"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-md bg-muted text-muted-foreground group-hover:text-primary transition">
-                      <Icon className="h-4 w-4" />
+                  <div className="flex items-center gap-2.5 truncate">
+                    <div className="p-1.5 rounded-lg bg-muted group-hover:bg-emerald-500/20 text-muted-foreground group-hover:text-emerald-500 transition-colors">
+                      <Icon className="h-3.5 w-3.5" />
                     </div>
-                    <div>
-                      <div className="font-medium text-foreground">{item.title}</div>
-                      <div className="text-[10px] text-muted-foreground">{item.category}</div>
-                    </div>
+                    <span className="font-medium truncate">{item.title}</span>
                   </div>
-                  {item.shortcut && (
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground">
-                      {item.shortcut}
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-muted-foreground group-hover:text-emerald-500/80 uppercase font-semibold">
+                      {item.category}
                     </span>
-                  )}
+                    {item.shortcut && (
+                      <kbd className="px-1.5 py-0.5 rounded border border-border bg-background text-[10px] font-mono text-muted-foreground font-bold">
+                        {item.shortcut}
+                      </kbd>
+                    )}
+                  </div>
                 </button>
               );
             })
           )}
         </div>
 
-        {/* Footer shortcuts helper */}
-        <div className="flex items-center justify-between border-t border-border bg-muted/40 px-3 py-2 text-[10px] text-muted-foreground">
+        {/* Footer shortcuts info */}
+        <div className="px-4 py-2 border-t border-border bg-muted/40 text-[10px] text-muted-foreground flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 border font-mono">F8</kbd> Sales
-            </span>
-            <span>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 border font-mono">F9</kbd> Purchase
-            </span>
-            <span>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 border font-mono">F5</kbd> Payment
-            </span>
-            <span>
-              <kbd className="rounded bg-muted px-1.5 py-0.5 border font-mono">F6</kbd> Receipt
-            </span>
+            <span>F1: Select Co</span>
+            <span>•</span>
+            <span>F8: Sales</span>
+            <span>•</span>
+            <span>F9: Purchase</span>
+            <span>•</span>
+            <span>F5: Payment</span>
           </div>
-          <span>
-            <kbd className="rounded bg-muted px-1.5 py-0.5 border font-mono">Esc</kbd> Close
-          </span>
+          <span>ESC to close</span>
         </div>
       </div>
     </div>

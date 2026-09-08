@@ -7,6 +7,9 @@ import { getCustomers } from "@/server/customers/customerActions";
 import { getItems } from "@/server/items/itemActions";
 import { createInvoice, InvoiceItemInput } from "@/server/invoices/invoiceActions";
 import { formatINR, getSupplyType, computeGst, numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate, formatDisplayDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import {
   FileSpreadsheet,
   Plus,
@@ -20,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 
-export default function SalesInvoicePage() {
+const SalesInvoicePage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, startTransition] = useTransition();
@@ -33,7 +36,7 @@ export default function SalesInvoicePage() {
 
   // Invoice Form State
   const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
+  const [invoiceDate, setInvoiceDate] = useState(formatInputDate(new Date()));
   const [dueDate, setDueDate] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -65,7 +68,7 @@ export default function SalesInvoicePage() {
   ]);
 
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       const [compRes, custRes, itemRes] = await Promise.all([
         getCompanyProfile(),
         getCustomers(),
@@ -93,6 +96,7 @@ export default function SalesInvoicePage() {
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectCustomer = (cust: any, companyStateCode = company?.stateCode || "19") => {
@@ -251,14 +255,45 @@ export default function SalesInvoicePage() {
   const grandTotal = Math.round(grandTotalExact);
   const roundOff = Math.round((grandTotal - grandTotalExact) * 100) / 100;
 
+  const previewExportOptions = {
+    filename: `tax-invoice-${invoiceNo || "draft"}-${formatInputDate(new Date())}`,
+    title: `TAX INVOICE, ${company?.name || "Company"}`,
+    subtitle: `Invoice No: ${invoiceNo} | Date: ${invoiceDate} | Customer: ${customerName} | Total: ${formatINR(grandTotal)}`,
+    sheetName: "Tax_Invoice",
+    headers: [
+      "#",
+      "Description of Goods / Services",
+      "HSN/SAC",
+      "Qty",
+      "Unit",
+      "Rate (₹)",
+      "Taxable Value (₹)",
+      "GST Rate (%)",
+      "Total Amount (₹)",
+    ],
+    data: lines.map((l, i) => [
+      i + 1,
+      l.itemName,
+      l.hsnSac,
+      l.qty,
+      l.unit,
+      l.rate,
+      l.taxableValue,
+      `${l.gstRate}%`,
+      l.totalAmount,
+    ]),
+  };
+
   const handleSaveInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName) {
       setFeedback({ type: "error", message: "Please select or enter customer details." });
+      notify.error("Please select or enter customer details.");
       return;
     }
     if (lines.length === 0 || lines.some((l) => !l.itemCode)) {
       setFeedback({ type: "error", message: "Invoice must have at least one valid item." });
+      notify.error("Invoice must have at least one valid item.");
       return;
     }
 
@@ -290,11 +325,13 @@ export default function SalesInvoicePage() {
           type: "success",
           message: `Invoice ${invoiceNo} generated & posted to Day Book successfully!`,
         });
+        notify.success(`Invoice ${invoiceNo} generated & posted to Day Book successfully!`);
         setTimeout(() => {
           router.push("/registers/sales");
         }, 1200);
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to create invoice." });
+        notify.error(res.error || "Failed to create invoice.");
       }
     });
   };
@@ -623,7 +660,15 @@ export default function SalesInvoicePage() {
               </span>
             </div>
 
-            <div className="pt-3">
+            <div className="pt-3 space-y-2">
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-2 text-xs font-semibold text-foreground hover:bg-muted transition cursor-pointer"
+              >
+                <Eye className="h-4 w-4 text-emerald-500" />
+                Preview & Export Invoice
+              </button>
               <button
                 type="submit"
                 disabled={saving}
@@ -653,6 +698,7 @@ export default function SalesInvoicePage() {
                 TAX INVOICE PREVIEW
               </span>
               <div className="flex items-center gap-2">
+                <ExportButtonGroup exportOptions={previewExportOptions} />
                 <button
                   onClick={() => window.print()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer"
@@ -706,7 +752,7 @@ export default function SalesInvoicePage() {
                   </div>
                   <div>
                     <span className="text-slate-500">Invoice Date:</span>{" "}
-                    <span className="font-semibold">{invoiceDate}</span>
+                    <span className="font-semibold">{formatDisplayDate(invoiceDate)}</span>
                   </div>
                   <div>
                     <span className="text-slate-500">Supply Type:</span>{" "}
@@ -810,4 +856,6 @@ export default function SalesInvoicePage() {
       )}
     </div>
   );
-}
+};
+
+export default SalesInvoicePage;

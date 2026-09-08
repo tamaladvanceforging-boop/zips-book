@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { getTrialBalance } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { Scale, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 
-export default function TrialBalancePage() {
+const TrialBalancePage = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +36,35 @@ export default function TrialBalancePage() {
   const totals = data?.totals || {};
   const isBalanced = totals.isBalanced;
 
+  const exportOptions = {
+    filename: `trial-balance-${formatInputDate(new Date())}`,
+    title: "Trial Balance Statement (Ledger Verification)",
+    subtitle: `Closing Dr: ${formatINR(totals.closingDr || 0)} | Closing Cr: ${formatINR(totals.closingCr || 0)} | Status: ${isBalanced ? "Balanced" : `Diff: ${formatINR(totals.difference || 0)}`}`,
+    sheetName: "Trial_Balance",
+    headers: [
+      "Code",
+      "Account / Ledger Name",
+      "Group Type",
+      "Opening Dr (₹)",
+      "Opening Cr (₹)",
+      "Period Dr (₹)",
+      "Period Cr (₹)",
+      "Closing Dr (₹)",
+      "Closing Cr (₹)",
+    ],
+    data: rows.map((r: any) => [
+      r.code,
+      r.name,
+      r.type,
+      r.openingDr || 0,
+      r.openingCr || 0,
+      r.periodDr || 0,
+      r.periodCr || 0,
+      r.closingDr || 0,
+      r.closingCr || 0,
+    ]),
+  };
+
   return (
     <div className="space-y-6 pb-16">
       {/* Header */}
@@ -41,14 +72,14 @@ export default function TrialBalancePage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-sky-500" />
-            <h1 className="text-xl font-bold tracking-tight">Trial Balance (Tally-Style Verification)</h1>
+            <h1 className="text-xl font-bold tracking-tight">Trial Balance (Double-Entry Verification)</h1>
           </div>
           <p className="text-xs text-muted-foreground">
             Summary statement of all ledger account closing balances verifying that Total Debits equal Total Credits.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {isBalanced ? (
             <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
               <CheckCircle2 className="h-4 w-4" />
@@ -60,6 +91,7 @@ export default function TrialBalancePage() {
               <span>Difference: {formatINR(totals.difference || 0)}</span>
             </div>
           )}
+          <ExportButtonGroup exportOptions={exportOptions} />
         </div>
       </div>
 
@@ -145,4 +177,6 @@ export default function TrialBalancePage() {
       </div>
     </div>
   );
-}
+};
+
+export default TrialBalancePage;

@@ -6,9 +6,12 @@ import { AppLayout } from "@/components/Layout/AppLayout";
 import "./globals.css";
 
 export const metadata = {
-  title: "ZIPS-Book | Tally-Style GST Billing & Accounting ERP",
+  title: "ZIPS-Book | Enterprise GST Billing & Accounting ERP",
   description:
     "Enterprise-grade modern classic GST billing, invoicing, double-entry bookkeeping and accounting system",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 const RootLayout = ({ children }: LayoutProps) => {

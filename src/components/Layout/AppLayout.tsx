@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { usePathname } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
 import Header from "./Header";
 import { CommandPalette } from "./CommandPalette";
@@ -9,10 +10,21 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export const AppLayout = ({ children }: AppLayoutProps) => {
+  const pathname = usePathname();
+  const isAuthPage = pathname?.startsWith("/auth");
+
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen w-full bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Tally Go-To Command Dialog */}
+      {/* Quick Jump Command Dialog */}
       <CommandPalette />
 
       {/* Modern Classic ERP Sidebar */}
@@ -27,4 +39,4 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
     </div>
   );
-}
+};

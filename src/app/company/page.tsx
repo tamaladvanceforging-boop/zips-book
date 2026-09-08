@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getCompanyProfile, updateCompanyProfile, CompanyData } from "@/server/company/companyActions";
 import { INDIAN_STATES } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { Building2, Save, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 
-export default function CompanySetupPage() {
+const CompanySetupPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -36,36 +37,36 @@ export default function CompanySetupPage() {
   });
 
   useEffect(() => {
-    async function load() {
+    const load = async () => {
       const res = await getCompanyProfile();
       if (res.success && res.data) {
         setFormData({
-          name: res.data.name,
-          addressLine1: res.data.addressLine1,
-          addressLine2: res.data.addressLine2,
-          city: res.data.city,
-          state: res.data.state,
-          stateCode: res.data.stateCode,
-          pincode: res.data.pincode,
-          gstin: res.data.gstin,
-          pan: res.data.pan,
-          email: res.data.email,
-          phone: res.data.phone,
-          bankName: res.data.bankName,
-          bankAccountNo: res.data.bankAccountNo,
-          ifscCode: res.data.ifscCode,
-          invoicePrefix: res.data.invoicePrefix,
-          nextInvoiceNo: res.data.nextInvoiceNo,
-          purchasePrefix: res.data.purchasePrefix,
-          nextPurchaseNo: res.data.nextPurchaseNo,
-          paymentPrefix: res.data.paymentPrefix,
-          nextPaymentNo: res.data.nextPaymentNo,
-          receiptPrefix: res.data.receiptPrefix,
-          nextReceiptNo: res.data.nextReceiptNo,
+          name: res.data.name || "",
+          addressLine1: res.data.addressLine1 || "",
+          addressLine2: res.data.addressLine2 || "",
+          city: res.data.city || "",
+          state: res.data.state || "West Bengal",
+          stateCode: res.data.stateCode || "19",
+          pincode: res.data.pincode || "",
+          gstin: res.data.gstin || "",
+          pan: res.data.pan || "",
+          email: res.data.email || "",
+          phone: res.data.phone || "",
+          bankName: res.data.bankName || "",
+          bankAccountNo: res.data.bankAccountNo || "",
+          ifscCode: res.data.ifscCode || "",
+          invoicePrefix: res.data.invoicePrefix || "INV-",
+          nextInvoiceNo: res.data.nextInvoiceNo || 1,
+          purchasePrefix: res.data.purchasePrefix || "PUR-",
+          nextPurchaseNo: res.data.nextPurchaseNo || 1,
+          paymentPrefix: res.data.paymentPrefix || "PMT-",
+          nextPaymentNo: res.data.nextPaymentNo || 1,
+          receiptPrefix: res.data.receiptPrefix || "RCT-",
+          nextReceiptNo: res.data.nextReceiptNo || 1,
         });
       }
       setLoading(false);
-    }
+    };
     load();
   }, []);
 
@@ -85,8 +86,10 @@ export default function CompanySetupPage() {
       const res = await updateCompanyProfile(formData);
       if (res.success) {
         setFeedback({ type: "success", message: "Company profile updated successfully!" });
+        notify.success("Company profile updated successfully!");
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to update profile." });
+        notify.error(res.error || "Failed to update profile.");
       }
     });
   };
@@ -378,4 +381,6 @@ export default function CompanySetupPage() {
       </form>
     </div>
   );
-}
+};
+
+export default CompanySetupPage;

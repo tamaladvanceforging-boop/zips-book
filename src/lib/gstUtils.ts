@@ -123,7 +123,7 @@ const tens = [
   "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
 ];
 
-function convertLessThanThousand(n: number): string {
+const convertLessThanThousand = (n: number): string => {
   let str = "";
   if (n >= 100) {
     str += ones[Math.floor(n / 100)] + " Hundred ";

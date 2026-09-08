@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { getProfitLoss } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { TrendingUp, RefreshCw } from "lucide-react";
 
-export default function ProfitLossPage() {
+const ProfitLossPage = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +38,28 @@ export default function ProfitLossPage() {
   const grossProfit = data?.grossProfit || 0;
   const netProfit = data?.netProfit || 0;
 
+  const exportOptions = {
+    filename: `profit-loss-${formatInputDate(new Date())}`,
+    title: "Profit & Loss Statement (Income Statement)",
+    subtitle: `Total Revenue: ${formatINR(income.totalIncome || 0)} | Total COGS: ${formatINR(cogs.totalCogs || 0)} | Gross Margin: ${formatINR(grossProfit)} | Net Result: ${formatINR(netProfit)} (${netProfit >= 0 ? "Net Profit" : "Net Loss"})`,
+    sheetName: "Profit_and_Loss",
+    headers: ["Category / Head", "Ledger Account / Description", "Amount (₹)"],
+    data: [
+      ["1. Income / Revenue", "4010 - Sales Account (Operating Revenue)", income.sales || 0],
+      ["1. Income / Revenue", "Total Income", income.totalIncome || 0],
+      ["2. Cost of Goods Sold", "5010 - Purchase Account (Procurement)", cogs.purchases || 0],
+      ["2. Cost of Goods Sold", "Total Cost of Goods Sold", cogs.totalCogs || 0],
+      ["Gross Margin", "Gross Profit (Revenue - COGS)", grossProfit],
+      ...expenses.map((e: any) => [
+        "3. Indirect Operating Expenses",
+        `${e.code} - ${e.name}`,
+        e.amount || 0,
+      ]),
+      ["3. Indirect Operating Expenses", "Total Indirect Expenses", data?.totalIndirectExpenses || 0],
+      ["Net Result", netProfit >= 0 ? "NET PROFIT" : "NET LOSS", netProfit],
+    ],
+  };
+
   return (
     <div className="space-y-6 max-w-4xl pb-16">
       {/* Header */}
@@ -48,6 +72,9 @@ export default function ProfitLossPage() {
           <p className="text-xs text-muted-foreground">
             Operational financial performance showing Revenue, Cost of Goods Sold (COGS), Gross Margin, and Net Profit.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ExportButtonGroup exportOptions={exportOptions} />
         </div>
       </div>
 
@@ -163,4 +190,6 @@ export default function ProfitLossPage() {
       </div>
     </div>
   );
-}
+};
+
+export default ProfitLossPage;

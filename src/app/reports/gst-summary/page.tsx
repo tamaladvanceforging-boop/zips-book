@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { getGstSummary } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { Landmark, ArrowUpRight, ArrowDownLeft, RefreshCw, CheckCircle2 } from "lucide-react";
 
-export default function GstSummaryPage() {
+const GstSummaryPage = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +36,26 @@ export default function GstSummaryPage() {
   const inward = data?.inward;
   const net = data?.netTax;
 
+  const exportOptions = {
+    filename: `gst-summary-${formatInputDate(new Date())}`,
+    title: "GST Summary Statement (GSTR-1 & GSTR-3B)",
+    subtitle: `Total Output: ${formatINR(outward?.totalGstPayable || 0)} | Total ITC: ${formatINR(inward?.totalItc || 0)} | Net Payable: ${formatINR(net?.netPayable || 0)}`,
+    sheetName: "GST_Summary",
+    headers: [
+      "Tax Head",
+      "Outward Supplies (Sales) (₹)",
+      "Inward Supplies (Purchases/ITC) (₹)",
+      "Net Balance (₹)",
+    ],
+    data: [
+      ["Taxable Value", outward?.taxableValue || 0, inward?.taxableValue || 0, (outward?.taxableValue || 0) - (inward?.taxableValue || 0)],
+      ["Central Tax (CGST)", outward?.cgst || 0, inward?.cgst || 0, (outward?.cgst || 0) - (inward?.cgst || 0)],
+      ["State Tax (SGST)", outward?.sgst || 0, inward?.sgst || 0, (outward?.sgst || 0) - (inward?.sgst || 0)],
+      ["Integrated Tax (IGST)", outward?.igst || 0, inward?.igst || 0, (outward?.igst || 0) - (inward?.igst || 0)],
+      ["Total Tax", outward?.totalGstPayable || 0, inward?.totalItc || 0, net?.netPayable || 0],
+    ],
+  };
+
   return (
     <div className="space-y-6 pb-16">
       {/* Header */}
@@ -46,6 +68,10 @@ export default function GstSummaryPage() {
           <p className="text-xs text-muted-foreground">
             Tax computation statement showing Outward Tax Liability, Inward Input Tax Credit (ITC), and Net GST Payable.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ExportButtonGroup options={exportOptions} disabled={!data} />
         </div>
       </div>
 
@@ -202,4 +228,6 @@ export default function GstSummaryPage() {
       </div>
     </div>
   );
-}
+};
+
+export default GstSummaryPage;

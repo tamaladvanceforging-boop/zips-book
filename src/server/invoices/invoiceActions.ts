@@ -1,8 +1,9 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
 import { postSalesInvoiceToAccounting } from "@/lib/accountingEngine";
 import { revalidatePath } from "next/cache";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
 export interface InvoiceItemInput {
   itemId?: string;
@@ -41,9 +42,13 @@ export interface CreateInvoiceInput {
   items: InvoiceItemInput[];
 }
 
-export async function getInvoices() {
+export const getInvoices = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
     const invoices = await prisma.invoice.findMany({
+      where: { companyId },
       orderBy: { invoiceDate: "desc" },
       include: {
         items: true,
@@ -55,9 +60,9 @@ export async function getInvoices() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch invoices" };
   }
-}
+};
 
-export async function getInvoiceById(id: string) {
+export const getInvoiceById = async (id: string) => {
   try {
     const invoice = await prisma.invoice.findUnique({
       where: { id },
@@ -72,20 +77,23 @@ export async function getInvoiceById(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch invoice" };
   }
-}
+};
 
-export async function createInvoice(data: CreateInvoiceInput) {
+export const createInvoice = async (data: CreateInvoiceInput) => {
   try {
-    const company = await prisma.companyProfile.findFirst();
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: false, error: "No active company selected" };
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
     const prefix = company?.invoicePrefix || "INV-";
     const nextNo = company?.nextInvoiceNo || 1;
 
     const invoiceNo = data.invoiceNo || `${prefix}${String(nextNo).padStart(5, "0")}`;
-
     const date = data.invoiceDate ? new Date(data.invoiceDate) : new Date();
 
     const invoice = await prisma.invoice.create({
       data: {
+        companyId,
         invoiceNo,
         invoiceDate: date,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
@@ -127,7 +135,7 @@ export async function createInvoice(data: CreateInvoiceInput) {
 
     // Update Company nextInvoiceNo counter
     if (company) {
-      await prisma.companyProfile.update({
+      await prisma.company.update({
         where: { id: company.id },
         data: { nextInvoiceNo: nextNo + 1 },
       });
@@ -135,6 +143,7 @@ export async function createInvoice(data: CreateInvoiceInput) {
 
     // Post Double Entry Journal & decrease inventory
     await postSalesInvoiceToAccounting({
+      companyId,
       invoiceId: invoice.id,
       invoiceNo: invoice.invoiceNo,
       customerName: invoice.customerName,
@@ -157,9 +166,9 @@ export async function createInvoice(data: CreateInvoiceInput) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create invoice" };
   }
-}
+};
 
-export async function deleteInvoice(id: string) {
+export const deleteInvoice = async (id: string) => {
   try {
     const inv = await prisma.invoice.findUnique({
       where: { id },
@@ -192,4 +201,4 @@ export async function deleteInvoice(id: string) {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete invoice" };
   }
-}
+};

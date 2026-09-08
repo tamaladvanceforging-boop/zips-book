@@ -22,9 +22,14 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  PlusCircle,
+  Settings2,
+  ArrowLeftRight,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppLogo } from "@/components/UI/AppLogo";
 
 interface NavGroup {
   label: string;
@@ -38,10 +43,12 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    label: "Main",
+    label: "Gateway & Company",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/company", label: "Company Setup", icon: Building2 },
+      { href: "/dashboard", label: "Enterprise Gateway", icon: LayoutDashboard },
+      { href: "/companies", label: "Select Company", icon: Building2, shortcut: "F1" },
+      { href: "/companies/create", label: "Create Company", icon: PlusCircle, shortcut: "F3" },
+      { href: "/company", label: "Alter Company", icon: Settings2, shortcut: "Alt+F3" },
     ],
   },
   {
@@ -60,6 +67,10 @@ const navGroups: NavGroup[] = [
       { href: "/vouchers/purchase", label: "Purchase Bill", icon: Receipt, shortcut: "F9" },
       { href: "/vouchers/payment", label: "Payment Voucher", icon: CreditCard, shortcut: "F5" },
       { href: "/vouchers/receipt", label: "Receipt Voucher", icon: Wallet, shortcut: "F6" },
+      { href: "/vouchers/contra", label: "Contra Voucher", icon: ArrowLeftRight, shortcut: "F4" },
+      { href: "/vouchers/journal", label: "Journal Voucher", icon: BookOpen, shortcut: "F7" },
+      { href: "/vouchers/credit-note", label: "Credit Note", icon: Undo2, shortcut: "Alt+F6" },
+      { href: "/vouchers/debit-note", label: "Debit Note", icon: Redo2, shortcut: "Alt+F5" },
     ],
   },
   {
@@ -67,6 +78,8 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/registers/sales", label: "Sales Register", icon: BookMarked },
       { href: "/registers/purchase", label: "Purchase Register", icon: BookMarked },
+      { href: "/registers/credit-notes", label: "Credit Note Register", icon: Undo2 },
+      { href: "/registers/debit-notes", label: "Debit Note Register", icon: Redo2 },
       { href: "/registers/daybook", label: "Day Book (Journal)", icon: BookOpen },
     ],
   },
@@ -82,7 +95,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppSidebar() {
+export const AppSidebar = () => {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -94,21 +107,13 @@ export function AppSidebar() {
       )}
     >
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-border">
+      <div className="flex items-center justify-between h-14 px-3 border-b border-border">
         {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/20">
-              <Sparkles className="h-4.4 w-4.4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-sm tracking-tight leading-tight">ZIPS-Book</span>
-              <span className="text-[10px] text-muted-foreground font-mono">Tally-Style ERP</span>
-            </div>
-          </Link>
+          <AppLogo size="sm" showText subtitle="Enterprise ERP" href="/dashboard" />
         )}
         {collapsed && (
-          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <Sparkles className="h-4 w-4" />
+          <div className="mx-auto">
+            <AppLogo size="xs" showText={false} href="/dashboard" />
           </div>
         )}
         <button
@@ -130,21 +135,21 @@ export function AppSidebar() {
               </div>
             )}
             {group.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
               const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href as any}
                   className={cn(
-                    "flex items-center gap-2.5 px-2.5 py-2 rounded-md font-medium transition-colors group",
+                    "flex items-center gap-2.5 px-2.5 py-2 rounded-xl font-medium transition-colors group",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/70"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                   title={collapsed ? `${item.label} ${item.shortcut ? `(${item.shortcut})` : ""}` : undefined}
                 >
-                  <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", isActive && "text-primary-foreground")} />
+                  <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", isActive && "text-white")} />
                   {!collapsed && (
                     <div className="flex items-center justify-between flex-1 truncate">
                       <span className="truncate">{item.label}</span>
@@ -153,7 +158,7 @@ export function AppSidebar() {
                           className={cn(
                             "text-[10px] font-mono px-1.5 py-0.5 rounded border leading-none ml-1",
                             isActive
-                              ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
+                              ? "border-white/30 bg-white/15 text-white"
                               : "border-border bg-muted/60 text-muted-foreground"
                           )}
                         >
@@ -172,14 +177,14 @@ export function AppSidebar() {
       {/* Sidebar Footer */}
       <div className="p-3 border-t border-border text-[11px] text-muted-foreground text-center">
         {!collapsed ? (
-          <div className="truncate">
-            <span className="font-semibold text-foreground">ZIPS Billing System</span>
-            <div className="text-[10px] opacity-75">Double-Entry Accounting</div>
+          <div className="space-y-0.5">
+            <span className="font-semibold text-foreground">ZIPS-Book ERP</span>
+            <div className="text-[10px] text-muted-foreground">© 2026 Tamal Roy Chowdhury</div>
           </div>
         ) : (
-          <div className="font-mono text-[9px]">v1.0</div>
+          <div className="font-mono text-[9px]">© 2026</div>
         )}
       </div>
     </aside>
   );
-}
+};

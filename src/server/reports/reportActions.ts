@@ -1,59 +1,114 @@
 "use server";
 
-import prisma from "@/lib/dbClient/prisma";
+import prisma from "@/lib/dbClient/dbClient";
+import { getActiveCompanyId } from "@/lib/companyContext";
 
-export async function getDashboardStats() {
+export const getDashboardStats = async () => {
   try {
-    const company = await prisma.companyProfile.findFirst();
-    const invoices = await prisma.invoice.findMany();
-    const purchases = await prisma.purchaseBill.findMany();
-    const itemsCount = await prisma.item.count();
-    const customersCount = await prisma.customer.count();
-    const vendorsCount = await prisma.vendor.count();
+    const companyId = await getActiveCompanyId();
+    if (!companyId) {
+      return {
+        success: true,
+        data: {
+          company: null,
+          totalInvoices: 0,
+          totalTaxable: 0,
+          totalCgst: 0,
+          totalSgst: 0,
+          totalIgst: 0,
+          totalGstPayable: 0,
+          totalInvoiceValue: 0,
+          totalPurchaseValue: 0,
+          totalReceivable: 0,
+          totalPayable: 0,
+          bankBalance: 0,
+          cashBalance: 0,
+          itemsCount: 0,
+          customersCount: 0,
+          vendorsCount: 0,
+          netProfit: 0,
+        },
+      };
+    }
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    const invoices = await prisma.invoice.findMany({ where: { companyId } });
+    const purchases = await prisma.purchaseBill.findMany({ where: { companyId } });
+    const creditNotes = await prisma.creditNote.findMany({ where: { companyId, status: { not: "CANCELLED" } } });
+    const debitNotes = await prisma.debitNote.findMany({ where: { companyId, status: { not: "CANCELLED" } } });
+    const itemsCount = await prisma.item.count({ where: { companyId } });
+    const customersCount = await prisma.customer.count({ where: { companyId } });
+    const vendorsCount = await prisma.vendor.count({ where: { companyId } });
 
     const totalInvoices = invoices.length;
-    const totalTaxable = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
-    const totalCgst = invoices.reduce((acc, inv) => acc + inv.cgstAmount, 0);
-    const totalSgst = invoices.reduce((acc, inv) => acc + inv.sgstAmount, 0);
-    const totalIgst = invoices.reduce((acc, inv) => acc + inv.igstAmount, 0);
-    const totalGstPayable = totalCgst + totalSgst + totalIgst;
-    const totalInvoiceValue = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
+    const rawTaxable = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
+    const rawCgst = invoices.reduce((acc, inv) => acc + inv.cgstAmount, 0);
+    const rawSgst = invoices.reduce((acc, inv) => acc + inv.sgstAmount, 0);
+    const rawIgst = invoices.reduce((acc, inv) => acc + inv.igstAmount, 0);
 
-    const totalPurchaseValue = purchases.reduce((acc, p) => acc + p.totalAmount, 0);
-    const totalPurchaseTaxable = purchases.reduce((acc, p) => acc + p.taxableValue, 0);
+    const cnTaxable = creditNotes.reduce((acc, c) => acc + c.taxableValue, 0);
+    const cnCgst = creditNotes.reduce((acc, c) => acc + c.cgstAmount, 0);
+    const cnSgst = creditNotes.reduce((acc, c) => acc + c.sgstAmount, 0);
+    const cnIgst = creditNotes.reduce((acc, c) => acc + c.igstAmount, 0);
+    const cnTotalAmount = creditNotes.reduce((acc, c) => acc + c.totalAmount, 0);
+
+    const dnTaxable = debitNotes.reduce((acc, d) => acc + d.taxableValue, 0);
+    const dnTotalAmount = debitNotes.reduce((acc, d) => acc + d.totalAmount, 0);
+
+    const totalTaxable = Math.max(0, rawTaxable - cnTaxable);
+    const totalCgst = Math.max(0, rawCgst - cnCgst);
+    const totalSgst = Math.max(0, rawSgst - cnSgst);
+    const totalIgst = Math.max(0, rawIgst - cnIgst);
+    const totalGstPayable = totalCgst + totalSgst + totalIgst;
+    const totalInvoiceValue = Math.max(0, invoices.reduce((acc, inv) => acc + inv.totalAmount, 0) - cnTotalAmount);
+
+    const totalPurchaseValue = Math.max(0, purchases.reduce((acc, p) => acc + p.totalAmount, 0) - dnTotalAmount);
+    const totalPurchaseTaxable = Math.max(0, purchases.reduce((acc, p) => acc + p.taxableValue, 0) - dnTaxable);
 
     // Outstanding Receivables & Payables
     const customers = await prisma.customer.findMany({
+      where: { companyId },
       include: {
         invoices: { select: { totalAmount: true } },
         receipts: { select: { amount: true } },
+        creditNotes: { select: { totalAmount: true } },
       },
     });
     const totalReceivable = customers.reduce((sum, c) => {
       const invSum = c.invoices.reduce((a, b) => a + b.totalAmount, 0);
       const recSum = c.receipts.reduce((a, b) => a + b.amount, 0);
-      return sum + (c.openingBalance + invSum - recSum);
+      const cnSum = c.creditNotes.reduce((a, b) => a + b.totalAmount, 0);
+      return sum + (c.openingBalance + invSum - recSum - cnSum);
     }, 0);
 
     const vendors = await prisma.vendor.findMany({
+      where: { companyId },
       include: {
         purchaseBills: { select: { totalAmount: true } },
         payments: { select: { amount: true } },
+        debitNotes: { select: { totalAmount: true } },
       },
     });
     const totalPayable = vendors.reduce((sum, v) => {
       const purSum = v.purchaseBills.reduce((a, b) => a + b.totalAmount, 0);
       const paySum = v.payments.reduce((a, b) => a + b.amount, 0);
-      return sum + (v.openingBalance + purSum - paySum);
+      const dnSum = v.debitNotes.reduce((a, b) => a + b.totalAmount, 0);
+      return sum + (v.openingBalance + purSum - paySum - dnSum);
     }, 0);
 
     // Bank & Cash Balances from Accounts
-    const bankAcc = await prisma.account.findUnique({
-      where: { code: "1020" },
+    const bankAcc = await prisma.account.findFirst({
+      where: {
+        companyId,
+        OR: [{ code: "1020" }, { code: "BANK-01" }, { category: "Bank Accounts" }],
+      },
       include: { journalLines: true },
     });
-    const cashAcc = await prisma.account.findUnique({
-      where: { code: "1010" },
+    const cashAcc = await prisma.account.findFirst({
+      where: {
+        companyId,
+        OR: [{ code: "1010" }, { code: "CASH-01" }, { name: { contains: "Cash" } }],
+      },
       include: { journalLines: true },
     });
 
@@ -67,7 +122,6 @@ export async function getDashboardStats() {
     const bankBalance = calcClosing(bankAcc);
     const cashBalance = calcClosing(cashAcc);
 
-    // Net profit = Sales Taxable - Purchase Taxable
     const grossProfit = totalTaxable - totalPurchaseTaxable;
     const netProfit = grossProfit;
 
@@ -96,11 +150,14 @@ export async function getDashboardStats() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch dashboard stats" };
   }
-}
+};
 
-export async function getDayBook(startDate?: string, endDate?: string, voucherType?: string) {
+export const getDayBook = async (startDate?: string, endDate?: string, voucherType?: string) => {
   try {
-    const whereClause: any = {};
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: [] };
+
+    const whereClause: any = { companyId };
     if (startDate || endDate) {
       whereClause.entryDate = {};
       if (startDate) whereClause.entryDate.gte = new Date(startDate);
@@ -126,14 +183,19 @@ export async function getDayBook(startDate?: string, endDate?: string, voucherTy
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch Day Book" };
   }
-}
+};
 
-export async function getOutstanding() {
+export const getOutstanding = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 } };
+
     const customers = await prisma.customer.findMany({
+      where: { companyId },
       include: {
         invoices: { select: { totalAmount: true } },
         receipts: { select: { amount: true } },
+        creditNotes: { select: { totalAmount: true } },
       },
       orderBy: { code: "asc" },
     });
@@ -141,7 +203,8 @@ export async function getOutstanding() {
     const receivables = customers.map((c) => {
       const totalInvoiced = c.invoices.reduce((a, b) => a + b.totalAmount, 0);
       const totalReceived = c.receipts.reduce((a, b) => a + b.amount, 0);
-      const outstanding = c.openingBalance + totalInvoiced - totalReceived;
+      const totalCreditNotes = c.creditNotes.reduce((a, b) => a + b.totalAmount, 0);
+      const outstanding = c.openingBalance + totalInvoiced - totalReceived - totalCreditNotes;
       return {
         id: c.id,
         code: c.code,
@@ -149,14 +212,17 @@ export async function getOutstanding() {
         phone: c.phone,
         totalInvoiced,
         totalReceived,
+        totalCreditNotes,
         outstanding,
       };
     });
 
     const vendors = await prisma.vendor.findMany({
+      where: { companyId },
       include: {
         purchaseBills: { select: { totalAmount: true } },
         payments: { select: { amount: true } },
+        debitNotes: { select: { totalAmount: true } },
       },
       orderBy: { code: "asc" },
     });
@@ -164,7 +230,8 @@ export async function getOutstanding() {
     const payables = vendors.map((v) => {
       const totalPurchased = v.purchaseBills.reduce((a, b) => a + b.totalAmount, 0);
       const totalPaid = v.payments.reduce((a, b) => a + b.amount, 0);
-      const outstanding = v.openingBalance + totalPurchased - totalPaid;
+      const totalDebitNotes = v.debitNotes.reduce((a, b) => a + b.totalAmount, 0);
+      const outstanding = v.openingBalance + totalPurchased - totalPaid - totalDebitNotes;
       return {
         id: v.id,
         code: v.code,
@@ -172,6 +239,7 @@ export async function getOutstanding() {
         phone: v.phone,
         totalPurchased,
         totalPaid,
+        totalDebitNotes,
         outstanding,
       };
     });
@@ -191,48 +259,88 @@ export async function getOutstanding() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch outstanding" };
   }
-}
+};
 
-export async function getGstSummary() {
+export const getGstSummary = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) {
+      return {
+        success: true,
+        data: {
+          outward: { taxableValue: 0, cgst: 0, sgst: 0, igst: 0, totalGstPayable: 0, totalInvoiceValue: 0, count: 0, intraBreakup: { taxable: 0, cgst: 0, sgst: 0, igst: 0 }, interBreakup: { taxable: 0, cgst: 0, sgst: 0, igst: 0 } },
+          inward: { taxableValue: 0, cgst: 0, sgst: 0, igst: 0, totalItc: 0, count: 0 },
+          netTax: { totalOutput: 0, totalInput: 0, netPayable: 0, itcCarriedForward: 0 },
+        },
+      };
+    }
+
     const invoices = await prisma.invoice.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: { companyId, status: { not: "CANCELLED" } },
     });
     const purchases = await prisma.purchaseBill.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: { companyId, status: { not: "CANCELLED" } },
+    });
+    const creditNotes = await prisma.creditNote.findMany({
+      where: { companyId, status: { not: "CANCELLED" } },
+    });
+    const debitNotes = await prisma.debitNote.findMany({
+      where: { companyId, status: { not: "CANCELLED" } },
     });
 
-    // Outward Supplies (Sales)
-    const outwardTaxable = invoices.reduce((sum, inv) => sum + inv.taxableValue, 0);
-    const outwardCgst = invoices.reduce((sum, inv) => sum + inv.cgstAmount, 0);
-    const outwardSgst = invoices.reduce((sum, inv) => sum + inv.sgstAmount, 0);
-    const outwardIgst = invoices.reduce((sum, inv) => sum + inv.igstAmount, 0);
-    const totalGstPayable = outwardCgst + outwardSgst + outwardIgst;
-    const totalInvoiceValue = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+    // Credit notes adjustments
+    const cnTaxable = creditNotes.reduce((sum, c) => sum + c.taxableValue, 0);
+    const cnCgst = creditNotes.reduce((sum, c) => sum + c.cgstAmount, 0);
+    const cnSgst = creditNotes.reduce((sum, c) => sum + c.sgstAmount, 0);
+    const cnIgst = creditNotes.reduce((sum, c) => sum + c.igstAmount, 0);
+    const cnTotalAmount = creditNotes.reduce((sum, c) => sum + c.totalAmount, 0);
 
-    // Intra vs Inter supply breakup
+    // Debit notes adjustments (ITC Reversal)
+    const dnTaxable = debitNotes.reduce((sum, d) => sum + d.taxableValue, 0);
+    const dnCgst = debitNotes.reduce((sum, d) => sum + d.cgstAmount, 0);
+    const dnSgst = debitNotes.reduce((sum, d) => sum + d.sgstAmount, 0);
+    const dnIgst = debitNotes.reduce((sum, d) => sum + d.igstAmount, 0);
+
+    // Outward Supplies (Sales net of Credit Notes)
+    const rawOutwardTaxable = invoices.reduce((sum, inv) => sum + inv.taxableValue, 0);
+    const rawOutwardCgst = invoices.reduce((sum, inv) => sum + inv.cgstAmount, 0);
+    const rawOutwardSgst = invoices.reduce((sum, inv) => sum + inv.sgstAmount, 0);
+    const rawOutwardIgst = invoices.reduce((sum, inv) => sum + inv.igstAmount, 0);
+
+    const outwardTaxable = Math.max(0, rawOutwardTaxable - cnTaxable);
+    const outwardCgst = Math.max(0, rawOutwardCgst - cnCgst);
+    const outwardSgst = Math.max(0, rawOutwardSgst - cnSgst);
+    const outwardIgst = Math.max(0, rawOutwardIgst - cnIgst);
+    const totalGstPayable = outwardCgst + outwardSgst + outwardIgst;
+    const totalInvoiceValue = Math.max(0, invoices.reduce((sum, inv) => sum + inv.totalAmount, 0) - cnTotalAmount);
+
     const intraSales = invoices.filter((i) => i.supplyType.includes("Intra"));
     const interSales = invoices.filter((i) => i.supplyType.includes("Inter"));
 
     const intraBreakup = {
-      taxable: intraSales.reduce((sum, i) => sum + i.taxableValue, 0),
-      cgst: intraSales.reduce((sum, i) => sum + i.cgstAmount, 0),
-      sgst: intraSales.reduce((sum, i) => sum + i.sgstAmount, 0),
+      taxable: Math.max(0, intraSales.reduce((sum, i) => sum + i.taxableValue, 0) - (cnCgst > 0 ? cnTaxable : 0)),
+      cgst: Math.max(0, intraSales.reduce((sum, i) => sum + i.cgstAmount, 0) - cnCgst),
+      sgst: Math.max(0, intraSales.reduce((sum, i) => sum + i.sgstAmount, 0) - cnSgst),
       igst: 0,
     };
 
     const interBreakup = {
-      taxable: interSales.reduce((sum, i) => sum + i.taxableValue, 0),
+      taxable: Math.max(0, interSales.reduce((sum, i) => sum + i.taxableValue, 0) - (cnIgst > 0 ? cnTaxable : 0)),
       cgst: 0,
       sgst: 0,
-      igst: interSales.reduce((sum, i) => sum + i.igstAmount, 0),
+      igst: Math.max(0, interSales.reduce((sum, i) => sum + i.igstAmount, 0) - cnIgst),
     };
 
-    // Inward Supplies (Purchases / Input Tax Credit)
-    const inwardTaxable = purchases.reduce((sum, p) => sum + p.taxableValue, 0);
-    const itmCgst = purchases.reduce((sum, p) => sum + p.cgstAmount, 0);
-    const itmSgst = purchases.reduce((sum, p) => sum + p.sgstAmount, 0);
-    const itmIgst = purchases.reduce((sum, p) => sum + p.igstAmount, 0);
+    // Inward Supplies (Purchases / Input Tax Credit net of Debit Notes)
+    const rawInwardTaxable = purchases.reduce((sum, p) => sum + p.taxableValue, 0);
+    const rawItmCgst = purchases.reduce((sum, p) => sum + p.cgstAmount, 0);
+    const rawItmSgst = purchases.reduce((sum, p) => sum + p.sgstAmount, 0);
+    const rawItmIgst = purchases.reduce((sum, p) => sum + p.igstAmount, 0);
+
+    const inwardTaxable = Math.max(0, rawInwardTaxable - dnTaxable);
+    const itmCgst = Math.max(0, rawItmCgst - dnCgst);
+    const itmSgst = Math.max(0, rawItmSgst - dnSgst);
+    const itmIgst = Math.max(0, rawItmIgst - dnIgst);
     const totalItc = itmCgst + itmSgst + itmIgst;
 
     // Net GST liability
@@ -272,11 +380,15 @@ export async function getGstSummary() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch GST summary" };
   }
-}
+};
 
-export async function getTrialBalance() {
+export const getTrialBalance = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) return { success: true, data: { rows: [], totals: { openingDr: 0, openingCr: 0, periodDr: 0, periodCr: 0, closingDr: 0, closingCr: 0, isBalanced: true, difference: 0 } } };
+
     const accounts = await prisma.account.findMany({
+      where: { companyId },
       orderBy: { code: "asc" },
       include: {
         journalLines: true,
@@ -348,45 +460,63 @@ export async function getTrialBalance() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch Trial Balance" };
   }
-}
+};
 
-export async function getProfitLoss() {
+export const getProfitLoss = async () => {
   try {
-    // Income: Sales Account (4010)
-    const salesAcc = await prisma.account.findUnique({
-      where: { code: "4010" },
+    const companyId = await getActiveCompanyId();
+    if (!companyId) {
+      return {
+        success: true,
+        data: {
+          income: { sales: 0, totalIncome: 0 },
+          cogs: { purchases: 0, totalCogs: 0 },
+          grossProfit: 0,
+          expenses: [],
+          totalIndirectExpenses: 0,
+          netProfit: 0,
+        },
+      };
+    }
+
+    // Income: Sales Account (4010 or SALES-01 or category Sales Accounts)
+    const salesAcc = await prisma.account.findFirst({
+      where: {
+        companyId,
+        OR: [{ code: "4010" }, { code: "SALES-01" }, { category: "Sales Accounts" }],
+      },
       include: { journalLines: true },
     });
     const salesIncome = salesAcc
-      ? salesAcc.openingCr +
-        salesAcc.journalLines.reduce((s, l) => s + l.credit - l.debit, 0)
+      ? salesAcc.openingCr + salesAcc.journalLines.reduce((s, l) => s + l.credit - l.debit, 0)
       : 0;
 
-    // COGS: Purchase Account (5010)
-    const purAcc = await prisma.account.findUnique({
-      where: { code: "5010" },
+    // COGS: Purchase Account (5010 or PURCHASE-01 or category Purchase Accounts)
+    const purAcc = await prisma.account.findFirst({
+      where: {
+        companyId,
+        OR: [{ code: "5010" }, { code: "PURCHASE-01" }, { category: "Purchase Accounts" }],
+      },
       include: { journalLines: true },
     });
     const purchaseCost = purAcc
-      ? purAcc.openingDr +
-        purAcc.journalLines.reduce((s, l) => s + l.debit - l.credit, 0)
+      ? purAcc.openingDr + purAcc.journalLines.reduce((s, l) => s + l.debit - l.credit, 0)
       : 0;
 
     const grossProfit = salesIncome - purchaseCost;
 
-    // Indirect Expenses: 5020 (Salary), 5030 (Rent), 5040 (Other Expenses)
+    // Indirect Expenses
     const expAccounts = await prisma.account.findMany({
       where: {
+        companyId,
         type: "Expense",
-        code: { not: "5010" },
+        code: { notIn: ["5010", "PURCHASE-01"] },
       },
       include: { journalLines: true },
     });
 
     const expenses = expAccounts.map((acc) => {
-      const amount =
-        acc.openingDr +
-        acc.journalLines.reduce((s, l) => s + l.debit - l.credit, 0);
+      const amount = acc.openingDr + acc.journalLines.reduce((s, l) => s + l.debit - l.credit, 0);
       return {
         code: acc.code,
         name: acc.name,
@@ -417,16 +547,32 @@ export async function getProfitLoss() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch Profit & Loss" };
   }
-}
+};
 
-export async function getBalanceSheet() {
+export const getBalanceSheet = async () => {
   try {
+    const companyId = await getActiveCompanyId();
+    if (!companyId) {
+      return {
+        success: true,
+        data: {
+          assets: [],
+          totalAssets: 0,
+          liabilities: [],
+          totalLiabilities: 0,
+          equity: { capitalAmount: 0, netProfit: 0, totalEquity: 0 },
+          totalLiabilitiesAndEquity: 0,
+          isBalanced: true,
+          difference: 0,
+        },
+      };
+    }
+
     const plRes = await getProfitLoss();
     const netProfit = plRes.success && plRes.data ? plRes.data.netProfit : 0;
 
-    // Assets: Cash (1010), Bank (1020), Debtors (1030), GST ITC (1040), Stock (1070), TDS Rec (1080)
     const assetAccounts = await prisma.account.findMany({
-      where: { type: "Asset" },
+      where: { companyId, type: "Asset" },
       include: { journalLines: true },
       orderBy: { code: "asc" },
     });
@@ -445,9 +591,8 @@ export async function getBalanceSheet() {
 
     const totalAssets = assets.reduce((sum, a) => sum + a.amount, 0);
 
-    // Liabilities: Creditors (2010), GST Payable (2020), TDS Payable (2030)
     const liabilityAccounts = await prisma.account.findMany({
-      where: { type: "Liability" },
+      where: { companyId, type: "Liability" },
       include: { journalLines: true },
       orderBy: { code: "asc" },
     });
@@ -466,19 +611,19 @@ export async function getBalanceSheet() {
 
     const totalLiabilities = liabilities.reduce((sum, l) => sum + l.amount, 0);
 
-    // Equity: Capital Account (3010) + Current Period Net Profit
-    const capitalAcc = await prisma.account.findUnique({
-      where: { code: "3010" },
+    const capitalAcc = await prisma.account.findFirst({
+      where: {
+        companyId,
+        OR: [{ code: "3010" }, { code: "CAPITAL-01" }, { category: "Capital" }],
+      },
       include: { journalLines: true },
     });
     const capitalAmount = capitalAcc
-      ? capitalAcc.openingCr +
-        capitalAcc.journalLines.reduce((s, l) => s + l.credit - l.debit, 0)
+      ? capitalAcc.openingCr + capitalAcc.journalLines.reduce((s, l) => s + l.credit - l.debit, 0)
       : 0;
 
     const totalEquity = capitalAmount + netProfit;
     const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
-
     const isBalanced = Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1;
 
     return {
@@ -501,4 +646,4 @@ export async function getBalanceSheet() {
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch Balance Sheet" };
   }
-}
+};

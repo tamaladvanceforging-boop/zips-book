@@ -7,6 +7,8 @@ import { getVendors } from "@/server/vendors/vendorActions";
 import { getItems } from "@/server/items/itemActions";
 import { createPurchase, PurchaseItemInput } from "@/server/purchases/purchaseActions";
 import { formatINR, getSupplyType, computeGst, numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
 import {
   Receipt,
   Plus,
@@ -17,7 +19,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-export default function PurchaseBillPage() {
+const PurchaseBillPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, startTransition] = useTransition();
@@ -30,7 +32,7 @@ export default function PurchaseBillPage() {
   // Purchase Bill State
   const [voucherNo, setVoucherNo] = useState("");
   const [vendorBillNo, setVendorBillNo] = useState("");
-  const [billDate, setBillDate] = useState(new Date().toISOString().split("T")[0]);
+  const [billDate, setBillDate] = useState(formatInputDate(new Date()));
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [vendorName, setVendorName] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
@@ -61,7 +63,7 @@ export default function PurchaseBillPage() {
   ]);
 
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       const [compRes, vendRes, itemRes] = await Promise.all([
         getCompanyProfile(),
         getVendors(),
@@ -89,6 +91,7 @@ export default function PurchaseBillPage() {
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectVendor = (v: any, compStateCode = company?.stateCode || "19") => {
@@ -250,10 +253,12 @@ export default function PurchaseBillPage() {
     e.preventDefault();
     if (!vendorName) {
       setFeedback({ type: "error", message: "Please select vendor details." });
+      notify.error("Please select vendor details.");
       return;
     }
     if (lines.length === 0 || lines.some((l) => !l.itemCode)) {
       setFeedback({ type: "error", message: "Bill must have at least one valid item." });
+      notify.error("Bill must have at least one valid item.");
       return;
     }
 
@@ -285,11 +290,13 @@ export default function PurchaseBillPage() {
           type: "success",
           message: `Purchase bill ${voucherNo} recorded & stock updated successfully!`,
         });
+        notify.success(`Purchase bill ${voucherNo} recorded & stock updated successfully!`);
         setTimeout(() => {
           router.push("/registers/purchase");
         }, 1200);
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to record purchase bill." });
+        notify.error(res.error || "Failed to record purchase bill.");
       }
     });
   };
@@ -611,4 +618,6 @@ export default function PurchaseBillPage() {
       </form>
     </div>
   );
-}
+};
+
+export default PurchaseBillPage;

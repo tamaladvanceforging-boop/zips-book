@@ -26,7 +26,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+const DashboardPage = async () => {
   const statsRes = await getDashboardStats();
   const data = statsRes.success && statsRes.data ? statsRes.data : ({} as any);
   const company = data.company;
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Navigation — The 17 Core Modules from Excel */}
+      {/* Quick Navigation, The 17 Core Modules from Excel */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
@@ -290,4 +290,6 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
-}
+};
+
+export default DashboardPage;

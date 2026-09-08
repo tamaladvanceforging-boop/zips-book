@@ -6,13 +6,14 @@ import {
   Undo2, 
   Plus, 
   Search, 
-  Download, 
   FileSpreadsheet, 
   Hash, 
   BadgePercent
 } from "lucide-react";
 import { getCreditNotes } from "@/server/notes/creditNoteActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatDisplayDate, formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { SlideUp, StaggerContainer, StaggerItem } from "@/components/Motion/MotionContainer";
 
 const CreditNotesRegisterPage = () => {
@@ -51,8 +52,12 @@ const CreditNotesRegisterPage = () => {
   const totalGst = totalCgst + totalSgst + totalIgst;
   const totalAmount = filtered.reduce((s, c) => s + (Number(c.totalAmount) || 0), 0);
 
-  const exportCSV = () => {
-    const headers = [
+  const exportOptions = {
+    filename: `credit-notes-register-${formatInputDate(new Date())}`,
+    title: "Credit Note Register (Sales Return / GST Sec 34)",
+    subtitle: `Total Notes: ${filtered.length} | Taxable: ${formatINR(totalTaxable)} | GST Reversed: ${formatINR(totalGst)} | Total Return: ${formatINR(totalAmount)}`,
+    sheetName: "Credit_Notes",
+    headers: [
       "Credit Note No",
       "Date",
       "Customer Name",
@@ -60,36 +65,26 @@ const CreditNotesRegisterPage = () => {
       "Original Inv No",
       "Original Inv Date",
       "Reason",
-      "Taxable Value",
-      "CGST",
-      "SGST",
-      "IGST",
-      "Total Amount",
-    ];
-
-    const rows = filtered.map((c) => [
+      "Taxable Value (₹)",
+      "CGST (₹)",
+      "SGST (₹)",
+      "IGST (₹)",
+      "Total Amount (₹)",
+    ],
+    data: filtered.map((c) => [
       c.noteNo,
-      new Date(c.noteDate).toLocaleDateString("en-IN"),
-      `"${c.customerName}"`,
+      formatDisplayDate(c.noteDate),
+      c.customerName,
       c.customerGstin || "N/A",
       c.originalInvoiceNo || "N/A",
-      c.originalInvoiceDate ? new Date(c.originalInvoiceDate).toLocaleDateString("en-IN") : "N/A",
-      `"${c.reason || "Sales Return"}"`,
+      c.originalInvoiceDate ? formatDisplayDate(c.originalInvoiceDate) : "N/A",
+      c.reason || "Sales Return",
       c.taxableValue,
       c.cgstAmount,
       c.sgstAmount,
       c.igstAmount,
       c.totalAmount,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `credit-notes-register-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ]),
   };
 
   return (
@@ -108,14 +103,7 @@ const CreditNotesRegisterPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={exportCSV}
-              disabled={filtered.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-secondary/80 hover:bg-secondary text-foreground border border-border disabled:opacity-50 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </button>
+            <ExportButtonGroup options={exportOptions} disabled={filtered.length === 0} />
             <Link
               href="/vouchers/credit-note"
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/20 transition-all"
@@ -223,7 +211,7 @@ const CreditNotesRegisterPage = () => {
                   filtered.map((cn) => (
                     <tr key={cn.id} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(cn.noteDate).toLocaleDateString("en-IN")}
+                        {formatDisplayDate(cn.noteDate)}
                       </td>
                       <td className="py-3 px-4 font-mono font-semibold text-purple-400 whitespace-nowrap">
                         {cn.noteNo}
@@ -242,7 +230,7 @@ const CreditNotesRegisterPage = () => {
                             <div>{cn.originalInvoiceNo}</div>
                             {cn.originalInvoiceDate && (
                               <div className="text-[10px]">
-                                {new Date(cn.originalInvoiceDate).toLocaleDateString("en-IN")}
+                                {formatDisplayDate(cn.originalInvoiceDate)}
                               </div>
                             )}
                           </div>

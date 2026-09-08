@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getAccounts, createAccount, AccountInput } from "@/server/accounts/accountActions";
 import { formatINR } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { BookOpen, Plus, Search, RefreshCw, X } from "lucide-react";
 
-export default function ChartOfAccountsPage() {
+const ChartOfAccountsPage = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -50,9 +51,14 @@ export default function ChartOfAccountsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      await createAccount(formData);
-      setModalOpen(false);
-      loadAccounts();
+      const res = await createAccount(formData);
+      if (res.success) {
+        notify.success(`Ledger account ${formData.name} created successfully!`);
+        setModalOpen(false);
+        loadAccounts();
+      } else {
+        notify.error(res.error || "Failed to create ledger account.");
+      }
     });
   };
 
@@ -331,4 +337,6 @@ export default function ChartOfAccountsPage() {
       )}
     </div>
   );
-}
+};
+
+export default ChartOfAccountsPage;

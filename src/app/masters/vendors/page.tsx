@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getVendors, createVendor, updateVendor, deleteVendor, VendorInput } from "@/server/vendors/vendorActions";
 import { formatINR, INDIAN_STATES } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { Factory, Plus, Search, Edit2, Trash2, X, RefreshCw } from "lucide-react";
 
-export default function VendorsPage() {
+const VendorsPage = () => {
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -97,7 +98,12 @@ export default function VendorsPage() {
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete vendor ${name}?`)) return;
     startTransition(async () => {
-      await deleteVendor(id);
+      const res = await deleteVendor(id);
+      if (res.success) {
+        notify.success(`Vendor ${name} deleted.`);
+      } else {
+        notify.error("Failed to delete vendor.");
+      }
       loadVendors();
     });
   };
@@ -105,13 +111,19 @@ export default function VendorsPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
+      let res;
       if (isEditing && activeId) {
-        await updateVendor(activeId, formData);
+        res = await updateVendor(activeId, formData);
       } else {
-        await createVendor(formData);
+        res = await createVendor(formData);
       }
-      setModalOpen(false);
-      loadVendors();
+      if (res?.success) {
+        notify.success(`Vendor ${formData.name} saved successfully!`);
+        setModalOpen(false);
+        loadVendors();
+      } else {
+        notify.error(res?.error || "Failed to save vendor.");
+      }
     });
   };
 
@@ -425,4 +437,6 @@ export default function VendorsPage() {
       )}
     </div>
   );
-}
+};
+
+export default VendorsPage;

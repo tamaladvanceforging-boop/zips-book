@@ -5,9 +5,11 @@ import { getCompanyProfile } from "@/server/company/companyActions";
 import { getVendors } from "@/server/vendors/vendorActions";
 import { getPaymentVouchers, createPaymentVoucher, CreatePaymentInput } from "@/server/vouchers/voucherActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
 import { CreditCard, Save, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 
-export default function PaymentVoucherPage() {
+const PaymentVoucherPage = () => {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function PaymentVoucherPage() {
 
   const [formData, setFormData] = useState<CreatePaymentInput>({
     voucherNo: "",
-    date: new Date().toISOString().split("T")[0],
+    date: formatInputDate(new Date()),
     paymentType: "VENDOR",
     vendorId: "",
     vendorCode: "",
@@ -108,6 +110,7 @@ export default function PaymentVoucherPage() {
     e.preventDefault();
     if (amount <= 0) {
       setFeedback({ type: "error", message: "Please enter a valid amount greater than 0." });
+      notify.error("Please enter a valid amount greater than 0.");
       return;
     }
     setFeedback(null);
@@ -115,9 +118,11 @@ export default function PaymentVoucherPage() {
       const res = await createPaymentVoucher(formData);
       if (res.success) {
         setFeedback({ type: "success", message: `Payment Voucher ${formData.voucherNo} posted to Day Book successfully!` });
+        notify.success(`Payment Voucher ${formData.voucherNo} posted to Day Book successfully!`);
         loadData();
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to post payment voucher." });
+        notify.error(res.error || "Failed to post payment voucher.");
       }
     });
   };
@@ -137,7 +142,7 @@ export default function PaymentVoucherPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-rose-500" />
-            <h1 className="text-xl font-bold tracking-tight">Payment Voucher (Disbursements - F5)</h1>
+            <h1 className="text-xl font-bold tracking-tight">Payment Voucher, Disbursements F5</h1>
           </div>
           <p className="text-xs text-muted-foreground">
             Disburse funds to vendors or record expense payments (Salary, Rent, Utilities) with automatic TDS & double-entry posting.
@@ -471,4 +476,6 @@ export default function PaymentVoucherPage() {
       </div>
     </div>
   );
-}
+};
+
+export default PaymentVoucherPage;

@@ -18,6 +18,9 @@ import { getVendors } from "@/server/vendors/vendorActions";
 import { getItems } from "@/server/items/itemActions";
 import { getActiveCompanyAction } from "@/server/company/companyActions";
 import { formatINR, computeGst, numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate, formatDisplayDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { SlideUp, FadeIn } from "@/components/Motion/MotionContainer";
 
 const DebitNotePage = () => {
@@ -61,7 +64,7 @@ const DebitNotePage = () => {
   ]);
 
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       const [vRes, iRes, coRes] = await Promise.all([
         getVendors(),
         getItems(),
@@ -180,10 +183,31 @@ const DebitNotePage = () => {
   const totalIgst = lines.reduce((s, l) => s + l.igstAmount, 0);
   const grandTotal = lines.reduce((s, l) => s + l.totalAmount, 0);
 
+  const noteExportOptions = savedNote
+    ? {
+        filename: `debit-note-${savedNote.noteNo || "DN"}-${formatInputDate(new Date())}`,
+        title: `DEBIT NOTE (GST SECTION 34), ${company?.name || "Company"}`,
+        subtitle: `Note No: ${savedNote.noteNo} | Date: ${formatDisplayDate(savedNote.noteDate)} | Against Bill: ${savedNote.originalBillNo} | Vendor: ${savedNote.vendorName} | Total: ${formatINR(savedNote.totalAmount)}`,
+        sheetName: "Debit_Note",
+        headers: ["Item Description", "HSN/SAC", "Qty", "Unit", "Rate (₹)", "Taxable Value (₹)", "GST (%)", "Total (₹)"],
+        data: (savedNote.items || []).map((it: any) => [
+          it.itemName,
+          it.hsnSac || "",
+          it.qty,
+          it.unit,
+          it.rate,
+          it.taxableValue,
+          `${it.gstRate}%`,
+          it.totalAmount,
+        ]),
+      }
+    : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vendorName.trim()) {
       setFeedback({ type: "error", message: "Please select or enter vendor name." });
+      notify.error("Please select or enter vendor name.");
       return;
     }
 
@@ -213,11 +237,13 @@ const DebitNotePage = () => {
 
     if (res.success && res.data) {
       setFeedback({ type: "success", message: `Debit Note ${res.data.noteNo} created & Day Book posted successfully!` });
+      notify.success(`Debit Note ${res.data.noteNo} created & Day Book posted successfully!`);
       setSavedNote(res.data);
       setShowPrintModal(true);
       router.refresh();
     } else {
       setFeedback({ type: "error", message: res.error || "Failed to create Debit Note." });
+      notify.error(res.error || "Failed to create Debit Note.");
     }
     setLoading(false);
   };
@@ -571,7 +597,8 @@ const DebitNotePage = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
+              {noteExportOptions && <ExportButtonGroup exportOptions={noteExportOptions} />}
               <button
                 onClick={() => window.print()}
                 className="px-4 py-2 rounded-xl bg-foreground text-background font-semibold text-xs flex items-center gap-1.5"

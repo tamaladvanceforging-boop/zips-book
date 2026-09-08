@@ -1,29 +1,31 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { getDayBook } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatDisplayDate, formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { BookOpen, RefreshCw, CheckCircle2 } from "lucide-react";
 
-export default function DayBookPage() {
+const DayBookPage = () => {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [voucherType, setVoucherType] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const loadEntries = async () => {
+  const loadEntries = useCallback(async () => {
     setLoading(true);
     const res = await getDayBook(startDate || undefined, endDate || undefined, voucherType);
     if (res.success && res.data) {
       setEntries(res.data);
     }
     setLoading(false);
-  };
+  }, [startDate, endDate, voucherType]);
 
   useEffect(() => {
     loadEntries();
-  }, [voucherType, startDate, endDate]);
+  }, [loadEntries]);
 
   // Flatten journal lines for Day Book view matching Excel layout
   const flatRows: {
@@ -57,6 +59,31 @@ export default function DayBookPage() {
 
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
+  const exportOptions = {
+    filename: `daybook-${formatInputDate(new Date())}`,
+    title: "Day Book (General Journal Ledger)",
+    subtitle: `Total Debit: ${formatINR(totalDebit)} | Total Credit: ${formatINR(totalCredit)} | Status: ${isBalanced ? "Balanced" : "Unbalanced"}`,
+    sheetName: "Day_Book",
+    headers: [
+      "Date",
+      "Voucher Type",
+      "Voucher No",
+      "Particulars (Account)",
+      "Debit (₹)",
+      "Credit (₹)",
+      "Narration",
+    ],
+    data: flatRows.map((r) => [
+      formatDisplayDate(r.date),
+      r.voucherType,
+      r.voucherNo,
+      r.accountName,
+      r.debit,
+      r.credit,
+      r.narration,
+    ]),
+  };
+
   const getTypeColor = (t: string) => {
     switch (t) {
       case "Sales":
@@ -67,6 +94,14 @@ export default function DayBookPage() {
         return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
       case "Receipt":
         return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+      case "Contra":
+        return "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20";
+      case "Journal":
+        return "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20";
+      case "Credit Note":
+        return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
+      case "Debit Note":
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -82,7 +117,7 @@ export default function DayBookPage() {
             <h1 className="text-xl font-bold tracking-tight">Day Book (General Journal Ledger)</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            Complete chronological double-entry journal record auto-generated from all Sales, Purchases, Payments, and Receipts.
+            Complete chronological double-entry journal record auto-generated from all Sales, Purchases, Payments, Receipts, Contras, and Notes.
           </p>
         </div>
 
@@ -90,13 +125,14 @@ export default function DayBookPage() {
           {isBalanced ? (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
               <CheckCircle2 className="h-4 w-4" />
-              <span>Strict Double-Entry Balanced</span>
+              <span>Double-Entry Balanced</span>
             </div>
           ) : (
             <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-semibold">
               Check Entries ({formatINR(Math.abs(totalDebit - totalCredit))})
             </div>
           )}
+          <ExportButtonGroup options={exportOptions} disabled={flatRows.length === 0} />
         </div>
       </div>
 
@@ -104,7 +140,7 @@ export default function DayBookPage() {
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground font-medium">Voucher Type:</span>
-          {["ALL", "Sales", "Purchase", "Payment", "Receipt"].map((type) => (
+          {["ALL", "Sales", "Purchase", "Payment", "Receipt", "Contra", "Journal", "Credit Note", "Debit Note"].map((type) => (
             <button
               key={type}
               onClick={() => setVoucherType(type)}
@@ -184,7 +220,7 @@ export default function DayBookPage() {
                 flatRows.map((row, idx) => (
                   <tr key={idx} className="hover:bg-muted/30 transition">
                     <td className="px-4 py-2.5 text-muted-foreground">
-                      {new Date(row.date).toLocaleDateString("en-IN")}
+                      {formatDisplayDate(row.date)}
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${getTypeColor(row.voucherType)}`}>
@@ -194,10 +230,10 @@ export default function DayBookPage() {
                     <td className="px-4 py-2.5 font-mono font-bold text-foreground">{row.voucherNo}</td>
                     <td className="px-4 py-2.5 font-semibold text-foreground">{row.accountName}</td>
                     <td className="px-4 py-2.5 text-right font-mono font-medium">
-                      {row.debit > 0 ? formatINR(row.debit) : "-"}
+                      {row.debit > 0 ? formatINR(row.debit) : ""}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono font-medium">
-                      {row.credit > 0 ? formatINR(row.credit) : "-"}
+                      {row.credit > 0 ? formatINR(row.credit) : ""}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground text-[11px] truncate max-w-[280px]">
                       {row.narration}
@@ -231,4 +267,6 @@ export default function DayBookPage() {
       </div>
     </div>
   );
-}
+};
+
+export default DayBookPage;

@@ -10,7 +10,7 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export const AppLayout = ({ children }: AppLayoutProps) => {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith("/auth");
 
@@ -39,4 +39,4 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
     </div>
   );
-}
+};

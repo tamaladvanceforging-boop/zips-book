@@ -15,6 +15,8 @@ import {
 import { createContraVoucher } from "@/server/vouchers/contraActions";
 import { getAccounts } from "@/server/accounts/accountActions";
 import { numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
 import { SlideUp, FadeIn } from "@/components/Motion/MotionContainer";
 
 const ContraVoucherPage = () => {
@@ -24,7 +26,7 @@ const ContraVoucherPage = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [voucherNo, setVoucherNo] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(formatInputDate(new Date()));
   const [transferType, setTransferType] = useState<"CASH_TO_BANK" | "BANK_TO_CASH" | "BANK_TO_BANK">("CASH_TO_BANK");
   const [sourceAccount, setSourceAccount] = useState("Cash-in-Hand");
   const [targetAccount, setTargetAccount] = useState("State Bank of India");
@@ -32,7 +34,7 @@ const ContraVoucherPage = () => {
   const [narration, setNarration] = useState("Cash deposited into Current Bank Account");
 
   useEffect(() => {
-    async function load() {
+    const load = async () => {
       const res = await getAccounts();
       if (res.success && res.data) {
         const filtered = res.data.filter(
@@ -69,10 +71,12 @@ const ContraVoucherPage = () => {
     e.preventDefault();
     if (amount <= 0) {
       setFeedback({ type: "error", message: "Transfer amount must be greater than zero." });
+      notify.error("Transfer amount must be greater than zero.");
       return;
     }
     if (sourceAccount === targetAccount) {
       setFeedback({ type: "error", message: "Source and Target accounts cannot be the same." });
+      notify.error("Source and Target accounts cannot be the same.");
       return;
     }
 
@@ -91,9 +95,11 @@ const ContraVoucherPage = () => {
 
     if (res.success && res.data) {
       setFeedback({ type: "success", message: `Contra Voucher ${res.data.voucherNo} recorded successfully! Day Book updated.` });
+      notify.success(`Contra Voucher ${res.data.voucherNo} recorded successfully! Day Book updated.`);
       router.refresh();
     } else {
       setFeedback({ type: "error", message: res.error || "Failed to record Contra voucher." });
+      notify.error(res.error || "Failed to record Contra voucher.");
     }
     setLoading(false);
   };

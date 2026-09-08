@@ -4,7 +4,7 @@ import { getActiveCompanyId } from "@/lib/companyContext";
 
 export const dynamic = "force-dynamic";
 
-export default async function RootPage() {
+const RootPage = async () => {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/auth/login");
@@ -16,4 +16,6 @@ export default async function RootPage() {
   }
 
   redirect("/dashboard");
-}
+};
+
+export default RootPage;

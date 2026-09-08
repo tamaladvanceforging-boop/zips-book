@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, CustomerInput } from "@/server/customers/customerActions";
 import { formatINR, INDIAN_STATES } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { Users, Plus, Search, Edit2, Trash2, X, RefreshCw, Phone, Mail } from "lucide-react";
 
-export default function CustomersPage() {
+const CustomersPage = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -85,7 +86,12 @@ export default function CustomersPage() {
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete customer ${name}?`)) return;
     startTransition(async () => {
-      await deleteCustomer(id);
+      const res = await deleteCustomer(id);
+      if (res.success) {
+        notify.success(`Customer ${name} deleted.`);
+      } else {
+        notify.error("Failed to delete customer.");
+      }
       loadCustomers();
     });
   };
@@ -93,13 +99,19 @@ export default function CustomersPage() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
+      let res;
       if (isEditing && activeId) {
-        await updateCustomer(activeId, formData);
+        res = await updateCustomer(activeId, formData);
       } else {
-        await createCustomer(formData);
+        res = await createCustomer(formData);
       }
-      setModalOpen(false);
-      loadCustomers();
+      if (res?.success) {
+        notify.success(`Customer ${formData.name} saved successfully!`);
+        setModalOpen(false);
+        loadCustomers();
+      } else {
+        notify.error(res?.error || "Failed to save customer.");
+      }
     });
   };
 
@@ -391,4 +403,6 @@ export default function CustomersPage() {
       )}
     </div>
   );
-}
+};
+
+export default CustomersPage;

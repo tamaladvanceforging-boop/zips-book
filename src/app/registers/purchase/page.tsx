@@ -4,9 +4,12 @@ import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { getPurchases, deletePurchase } from "@/server/purchases/purchaseActions";
 import { formatINR } from "@/lib/gstUtils";
-import { BookMarked, Plus, Search, Download, Trash2, RefreshCw } from "lucide-react";
+import { formatDisplayDate, formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
+import { BookMarked, Plus, Search, Trash2, RefreshCw } from "lucide-react";
 
-export default function PurchaseRegisterPage() {
+const PurchaseRegisterPage = () => {
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -29,7 +32,12 @@ export default function PurchaseRegisterPage() {
     if (!confirm(`Are you sure you want to delete purchase bill ${no}? Stock and journal entries will be reversed.`))
       return;
     startTransition(async () => {
-      await deletePurchase(id);
+      const res = await deletePurchase(id);
+      if (res.success) {
+        notify.success(`Purchase bill ${no} deleted successfully!`);
+      } else {
+        notify.error(res.error || "Failed to delete purchase bill");
+      }
       loadBills();
     });
   };
@@ -49,8 +57,12 @@ export default function PurchaseRegisterPage() {
   const totalIgst = filtered.reduce((s, b) => s + b.igstAmount, 0);
   const totalGross = filtered.reduce((s, b) => s + b.totalAmount, 0);
 
-  const exportCSV = () => {
-    const headers = [
+  const exportOptions = {
+    filename: `purchase-register-${formatInputDate(new Date())}`,
+    title: "Purchase Register (GSTR-2B Inward Supplies)",
+    subtitle: `Total Records: ${filtered.length} | Taxable: ${formatINR(totalTaxable)} | Gross: ${formatINR(totalGross)}`,
+    sheetName: "Purchase_Register",
+    headers: [
       "Voucher No",
       "Vendor Bill No",
       "Bill Date",
@@ -58,35 +70,26 @@ export default function PurchaseRegisterPage() {
       "GSTIN",
       "State",
       "Supply Type",
-      "Taxable Value",
-      "Input CGST",
-      "Input SGST",
-      "Input IGST",
-      "Total Bill Value",
-    ];
-    const rows = filtered.map((b) => [
+      "Taxable Value (₹)",
+      "Input CGST (₹)",
+      "Input SGST (₹)",
+      "Input IGST (₹)",
+      "Total Bill Value (₹)",
+    ],
+    data: filtered.map((b) => [
       b.voucherNo,
       b.vendorBillNo || "N/A",
-      new Date(b.billDate).toLocaleDateString("en-IN"),
-      `"${b.vendorName}"`,
+      formatDisplayDate(b.billDate),
+      b.vendorName,
       b.vendorGstin || "N/A",
       b.vendorState || "",
-      `"${b.supplyType}"`,
+      b.supplyType,
       b.taxableValue,
       b.cgstAmount,
       b.sgstAmount,
       b.igstAmount,
       b.totalAmount,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `purchase-register-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ]),
   };
 
   return (
@@ -104,13 +107,7 @@ export default function PurchaseRegisterPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-muted transition cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            <span>Export CSV</span>
-          </button>
+          <ExportButtonGroup options={exportOptions} disabled={filtered.length === 0} />
           <Link
             href="/vouchers/purchase"
             className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-cyan-700 transition shadow-xs cursor-pointer"
@@ -199,9 +196,9 @@ export default function PurchaseRegisterPage() {
                 filtered.map((b) => (
                   <tr key={b.id} className="hover:bg-muted/30 transition">
                     <td className="px-4 py-3 font-mono font-bold text-foreground">{b.voucherNo}</td>
-                    <td className="px-4 py-3 font-mono text-muted-foreground">{b.vendorBillNo || "-"}</td>
+                    <td className="px-4 py-3 font-mono text-muted-foreground">{b.vendorBillNo || "N/A"}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(b.billDate).toLocaleDateString("en-IN")}
+                      {formatDisplayDate(b.billDate)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-foreground">{b.vendorName}</td>
                     <td className="px-4 py-3 font-mono text-muted-foreground">
@@ -259,4 +256,6 @@ export default function PurchaseRegisterPage() {
       </div>
     </div>
   );
-}
+};
+
+export default PurchaseRegisterPage;

@@ -18,6 +18,9 @@ import { getCustomers } from "@/server/customers/customerActions";
 import { getItems } from "@/server/items/itemActions";
 import { getActiveCompanyAction } from "@/server/company/companyActions";
 import { formatINR, computeGst, numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate, formatDisplayDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { SlideUp, FadeIn } from "@/components/Motion/MotionContainer";
 
 const CreditNotePage = () => {
@@ -61,7 +64,7 @@ const CreditNotePage = () => {
   ]);
 
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       const [cRes, iRes, coRes] = await Promise.all([
         getCustomers(),
         getItems(),
@@ -180,10 +183,31 @@ const CreditNotePage = () => {
   const totalIgst = lines.reduce((s, l) => s + l.igstAmount, 0);
   const grandTotal = lines.reduce((s, l) => s + l.totalAmount, 0);
 
+  const noteExportOptions = savedNote
+    ? {
+        filename: `credit-note-${savedNote.noteNo || "CN"}-${formatInputDate(new Date())}`,
+        title: `CREDIT NOTE (GST SECTION 34), ${company?.name || "Company"}`,
+        subtitle: `Note No: ${savedNote.noteNo} | Date: ${formatDisplayDate(savedNote.noteDate)} | Against Invoice: ${savedNote.originalInvoiceNo} | Customer: ${savedNote.customerName} | Total: ${formatINR(savedNote.totalAmount)}`,
+        sheetName: "Credit_Note",
+        headers: ["Item Description", "HSN/SAC", "Qty", "Unit", "Rate (₹)", "Taxable Value (₹)", "GST (%)", "Total (₹)"],
+        data: (savedNote.items || []).map((it: any) => [
+          it.itemName,
+          it.hsnSac || "",
+          it.qty,
+          it.unit,
+          it.rate,
+          it.taxableValue,
+          `${it.gstRate}%`,
+          it.totalAmount,
+        ]),
+      }
+    : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim()) {
       setFeedback({ type: "error", message: "Please select or enter customer name." });
+      notify.error("Please select or enter customer name.");
       return;
     }
 
@@ -213,11 +237,13 @@ const CreditNotePage = () => {
 
     if (res.success && res.data) {
       setFeedback({ type: "success", message: `Credit Note ${res.data.noteNo} created & Day Book posted successfully!` });
+      notify.success(`Credit Note ${res.data.noteNo} created & Day Book posted successfully!`);
       setSavedNote(res.data);
       setShowPrintModal(true);
       router.refresh();
     } else {
       setFeedback({ type: "error", message: res.error || "Failed to create Credit Note." });
+      notify.error(res.error || "Failed to create Credit Note.");
     }
     setLoading(false);
   };
@@ -571,7 +597,8 @@ const CreditNotePage = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
+              {noteExportOptions && <ExportButtonGroup exportOptions={noteExportOptions} />}
               <button
                 onClick={() => window.print()}
                 className="px-4 py-2 rounded-xl bg-foreground text-background font-semibold text-xs flex items-center gap-1.5"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerAction } from "@/server/auth/authActions";
+import { notify } from "@/lib/notify";
 import { 
   Building2, 
   Lock, 
@@ -15,7 +16,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 
-export default function RegisterPage() {
+const RegisterPage = () => {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +29,7 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!name || !email || !password) {
       setError("Please fill out all fields.");
+      notify.error("Please fill out all fields.");
       return;
     }
 
@@ -36,10 +38,13 @@ export default function RegisterPage() {
 
     const res = await registerAction({ name, email, password, role });
     if (res.success) {
+      notify.success("Account created successfully! Welcome to ZIPS-Book ERP.");
       router.push("/companies" as any);
       router.refresh();
     } else {
-      setError(res.error || "Registration failed.");
+      const msg = res.error || "Registration failed.";
+      setError(msg);
+      notify.error(msg);
       setLoading(false);
     }
   };
@@ -188,4 +193,6 @@ export default function RegisterPage() {
       </div>
     </div>
   );
-}
+};
+
+export default RegisterPage;

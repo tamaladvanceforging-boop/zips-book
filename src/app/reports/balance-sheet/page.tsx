@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { getBalanceSheet } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { Coins, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 
-export default function BalanceSheetPage() {
+const BalanceSheetPage = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +37,24 @@ export default function BalanceSheetPage() {
   const equity = data?.equity || {};
   const isBalanced = data?.isBalanced;
 
+  const exportOptions = {
+    filename: `balance-sheet-${formatInputDate(new Date())}`,
+    title: "Balance Sheet (Statement of Financial Position)",
+    subtitle: `Total Assets: ${formatINR(data?.totalAssets || 0)} | Total Liab. & Equity: ${formatINR(data?.totalLiabilitiesAndEquity || 0)} | Status: ${isBalanced ? "Balanced" : `Variance: ${formatINR(data?.difference || 0)}`}`,
+    sheetName: "Balance_Sheet",
+    headers: ["Classification", "Account Code", "Particulars / Account Name", "Amount (₹)"],
+    data: [
+      ...assets.map((a: any) => ["ASSETS", a.code, a.name, a.amount || 0]),
+      ["ASSETS", "", "TOTAL ASSETS", data?.totalAssets || 0],
+      ...liabilities.map((l: any) => ["LIABILITIES", l.code, l.name, l.amount || 0]),
+      ["LIABILITIES", "", "TOTAL LIABILITIES", data?.totalLiabilities || 0],
+      ["EQUITY", "3010", "Capital Account", equity.capitalAmount || 0],
+      ["EQUITY", "PL", "Net Profit (Current Period)", equity.netProfit || 0],
+      ["EQUITY", "", "TOTAL EQUITY", equity.totalEquity || 0],
+      ["SUMMARY", "", "TOTAL LIABILITIES & EQUITY", data?.totalLiabilitiesAndEquity || 0],
+    ],
+  };
+
   return (
     <div className="space-y-6 max-w-5xl pb-16">
       {/* Header */}
@@ -49,7 +69,7 @@ export default function BalanceSheetPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {isBalanced ? (
             <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
               <CheckCircle2 className="h-4 w-4" />
@@ -61,6 +81,7 @@ export default function BalanceSheetPage() {
               <span>Variance: {formatINR(data?.difference || 0)}</span>
             </div>
           )}
+          <ExportButtonGroup exportOptions={exportOptions} />
         </div>
       </div>
 
@@ -163,4 +184,6 @@ export default function BalanceSheetPage() {
       </div>
     </div>
   );
-}
+};
+
+export default BalanceSheetPage;

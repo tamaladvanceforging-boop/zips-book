@@ -16,6 +16,8 @@ import {
 import { createJournalVoucher, JournalLineInput } from "@/server/vouchers/journalActions";
 import { getAccounts } from "@/server/accounts/accountActions";
 import { formatINR, numberToWordsINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
 import { SlideUp, FadeIn } from "@/components/Motion/MotionContainer";
 
 interface LineItemRow {
@@ -37,7 +39,7 @@ const JournalVoucherPage = () => {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [voucherNo, setVoucherNo] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(formatInputDate(new Date()));
   const [overallNarration, setOverallNarration] = useState("");
 
   const [rows, setRows] = useState<LineItemRow[]>([
@@ -150,16 +152,19 @@ const JournalVoucherPage = () => {
     e.preventDefault();
 
     if (!isBalanced) {
+      const msg = `Debit and Credit totals must match. Current difference: ${formatINR(difference)}`;
       setFeedback({
         type: "error",
-        message: `Debit and Credit totals must match. Current difference: ${formatINR(difference)}`,
+        message: msg,
       });
+      notify.error(msg);
       return;
     }
 
     const invalidRow = rows.find((r) => !r.accountName.trim());
     if (invalidRow) {
       setFeedback({ type: "error", message: "Please select an account for every row." });
+      notify.error("Please select an account for every row.");
       return;
     }
 
@@ -182,10 +187,12 @@ const JournalVoucherPage = () => {
     });
 
     if (res.success) {
+      const msg = `Journal Voucher ${res.voucherNo} posted successfully! Ledgers and Daybook updated.`;
       setFeedback({
         type: "success",
-        message: `Journal Voucher ${res.voucherNo} posted successfully! Ledgers and Daybook updated.`,
+        message: msg,
       });
+      notify.success(msg);
       setVoucherNo("");
       setOverallNarration("");
       setRows([
@@ -195,6 +202,7 @@ const JournalVoucherPage = () => {
       router.refresh();
     } else {
       setFeedback({ type: "error", message: res.error || "Failed to post Journal Voucher." });
+      notify.error(res.error || "Failed to post Journal Voucher.");
     }
     setLoading(false);
   };

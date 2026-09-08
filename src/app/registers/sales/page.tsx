@@ -4,9 +4,12 @@ import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { getInvoices, deleteInvoice } from "@/server/invoices/invoiceActions";
 import { formatINR } from "@/lib/gstUtils";
-import { BookMarked, Plus, Search, Download, Trash2, RefreshCw } from "lucide-react";
+import { formatDisplayDate, formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
+import { BookMarked, Plus, Search, Trash2, RefreshCw } from "lucide-react";
 
-export default function SalesRegisterPage() {
+const SalesRegisterPage = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -29,7 +32,12 @@ export default function SalesRegisterPage() {
     if (!confirm(`Are you sure you want to delete invoice ${no}? Stock and journal entries will be reversed.`))
       return;
     startTransition(async () => {
-      await deleteInvoice(id);
+      const res = await deleteInvoice(id);
+      if (res.success) {
+        notify.success(`Invoice ${no} deleted successfully!`);
+      } else {
+        notify.error(res.error || "Failed to delete invoice");
+      }
       loadInvoices();
     });
   };
@@ -49,42 +57,37 @@ export default function SalesRegisterPage() {
   const totalIgst = filtered.reduce((s, i) => s + i.igstAmount, 0);
   const totalGross = filtered.reduce((s, i) => s + i.totalAmount, 0);
 
-  const exportCSV = () => {
-    const headers = [
+  const exportOptions = {
+    filename: `sales-register-${formatInputDate(new Date())}`,
+    title: "Sales Register (GSTR-1 Outward Supplies)",
+    subtitle: `Total Records: ${filtered.length} | Taxable: ${formatINR(totalTaxable)} | Gross: ${formatINR(totalGross)}`,
+    sheetName: "Sales_Register",
+    headers: [
       "Invoice No",
       "Date",
       "Customer Name",
       "GSTIN",
       "State",
       "Supply Type",
-      "Taxable Value",
-      "CGST",
-      "SGST",
-      "IGST",
-      "Total Invoice Value",
-    ];
-    const rows = filtered.map((i) => [
+      "Taxable Value (₹)",
+      "CGST (₹)",
+      "SGST (₹)",
+      "IGST (₹)",
+      "Total Invoice Value (₹)",
+    ],
+    data: filtered.map((i) => [
       i.invoiceNo,
-      new Date(i.invoiceDate).toLocaleDateString("en-IN"),
-      `"${i.customerName}"`,
+      formatDisplayDate(i.invoiceDate),
+      i.customerName,
       i.customerGstin || "N/A",
       i.customerState || "",
-      `"${i.supplyType}"`,
+      i.supplyType,
       i.taxableValue,
       i.cgstAmount,
       i.sgstAmount,
       i.igstAmount,
       i.totalAmount,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `sales-register-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ]),
   };
 
   return (
@@ -102,13 +105,7 @@ export default function SalesRegisterPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-semibold text-secondary-foreground hover:bg-muted transition cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            <span>Export CSV</span>
-          </button>
+          <ExportButtonGroup options={exportOptions} disabled={filtered.length === 0} />
           <Link
             href="/vouchers/sales"
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition shadow-xs cursor-pointer"
@@ -198,7 +195,7 @@ export default function SalesRegisterPage() {
                   <tr key={inv.id} className="hover:bg-muted/30 transition">
                     <td className="px-4 py-3 font-mono font-bold text-foreground">{inv.invoiceNo}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
+                      {formatDisplayDate(inv.invoiceDate)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-foreground">{inv.customerName}</td>
                     <td className="px-4 py-3 font-mono text-muted-foreground">
@@ -261,4 +258,6 @@ export default function SalesRegisterPage() {
       </div>
     </div>
   );
-}
+};
+
+export default SalesRegisterPage;

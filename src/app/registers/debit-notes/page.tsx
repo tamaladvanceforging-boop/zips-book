@@ -6,13 +6,14 @@ import {
   Redo2, 
   Plus, 
   Search, 
-  Download, 
   FileSpreadsheet, 
   Hash, 
   ShieldAlert
 } from "lucide-react";
 import { getDebitNotes } from "@/server/notes/debitNoteActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatDisplayDate, formatInputDate } from "@/lib/dateUtils";
+import { ExportButtonGroup } from "@/components/UI/ExportButtonGroup";
 import { SlideUp, StaggerContainer, StaggerItem } from "@/components/Motion/MotionContainer";
 
 const DebitNotesRegisterPage = () => {
@@ -51,8 +52,12 @@ const DebitNotesRegisterPage = () => {
   const totalGst = totalCgst + totalSgst + totalIgst;
   const totalAmount = filtered.reduce((s, d) => s + (Number(d.totalAmount) || 0), 0);
 
-  const exportCSV = () => {
-    const headers = [
+  const exportOptions = {
+    filename: `debit-notes-register-${formatInputDate(new Date())}`,
+    title: "Debit Note Register (Purchase Return / ITC Reversal)",
+    subtitle: `Total Notes: ${filtered.length} | Taxable: ${formatINR(totalTaxable)} | ITC Reversed: ${formatINR(totalGst)} | Total Return: ${formatINR(totalAmount)}`,
+    sheetName: "Debit_Notes",
+    headers: [
       "Debit Note No",
       "Date",
       "Vendor Name",
@@ -60,36 +65,26 @@ const DebitNotesRegisterPage = () => {
       "Original Bill No",
       "Original Bill Date",
       "Reason",
-      "Taxable Value",
-      "CGST (ITC Reversal)",
-      "SGST (ITC Reversal)",
-      "IGST (ITC Reversal)",
-      "Total Amount",
-    ];
-
-    const rows = filtered.map((d) => [
+      "Taxable Value (₹)",
+      "CGST (ITC Reversal) (₹)",
+      "SGST (ITC Reversal) (₹)",
+      "IGST (ITC Reversal) (₹)",
+      "Total Amount (₹)",
+    ],
+    data: filtered.map((d) => [
       d.noteNo,
-      new Date(d.noteDate).toLocaleDateString("en-IN"),
-      `"${d.vendorName}"`,
+      formatDisplayDate(d.noteDate),
+      d.vendorName,
       d.vendorGstin || "N/A",
       d.originalBillNo || "N/A",
-      d.originalBillDate ? new Date(d.originalBillDate).toLocaleDateString("en-IN") : "N/A",
-      `"${d.reason || "Purchase Return"}"`,
+      d.originalBillDate ? formatDisplayDate(d.originalBillDate) : "N/A",
+      d.reason || "Purchase Return",
       d.taxableValue,
       d.cgstAmount,
       d.sgstAmount,
       d.igstAmount,
       d.totalAmount,
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `debit-notes-register-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    ]),
   };
 
   return (
@@ -108,14 +103,7 @@ const DebitNotesRegisterPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={exportCSV}
-              disabled={filtered.length === 0}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-secondary/80 hover:bg-secondary text-foreground border border-border disabled:opacity-50 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </button>
+            <ExportButtonGroup options={exportOptions} disabled={filtered.length === 0} />
             <Link
               href="/vouchers/debit-note"
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/20 transition-all"
@@ -223,7 +211,7 @@ const DebitNotesRegisterPage = () => {
                   filtered.map((dn) => (
                     <tr key={dn.id} className="hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(dn.noteDate).toLocaleDateString("en-IN")}
+                        {formatDisplayDate(dn.noteDate)}
                       </td>
                       <td className="py-3 px-4 font-mono font-semibold text-amber-400 whitespace-nowrap">
                         {dn.noteNo}
@@ -242,7 +230,7 @@ const DebitNotesRegisterPage = () => {
                             <div>{dn.originalBillNo}</div>
                             {dn.originalBillDate && (
                               <div className="text-[10px]">
-                                {new Date(dn.originalBillDate).toLocaleDateString("en-IN")}
+                                {formatDisplayDate(dn.originalBillDate)}
                               </div>
                             )}
                           </div>

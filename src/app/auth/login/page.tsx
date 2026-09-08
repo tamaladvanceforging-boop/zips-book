@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginAction } from "@/server/auth/authActions";
+import { notify } from "@/lib/notify";
 import { 
   Building2, 
   Lock, 
@@ -16,7 +17,7 @@ import {
   UserCheck
 } from "lucide-react";
 
-export default function LoginPage() {
+const LoginPage = () => {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +28,7 @@ export default function LoginPage() {
     e.preventDefault();
     if (!email || !password) {
       setError("Please provide both email and password.");
+      notify.error("Please provide both email and password.");
       return;
     }
 
@@ -35,10 +37,13 @@ export default function LoginPage() {
 
     const res = await loginAction({ email, password });
     if (res.success) {
+      notify.success("Welcome back! Loading Tally ERP Workspace...");
       router.push("/dashboard" as any);
       router.refresh();
     } else {
-      setError(res.error || "Login failed. Please check credentials.");
+      const msg = res.error || "Login failed. Please check credentials.";
+      setError(msg);
+      notify.error(msg);
       setLoading(false);
     }
   };
@@ -239,4 +244,6 @@ export default function LoginPage() {
       </div>
     </div>
   );
-}
+};
+
+export default LoginPage;

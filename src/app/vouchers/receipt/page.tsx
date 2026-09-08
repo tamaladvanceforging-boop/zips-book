@@ -5,9 +5,11 @@ import { getCompanyProfile } from "@/server/company/companyActions";
 import { getCustomers } from "@/server/customers/customerActions";
 import { getReceiptVouchers, createReceiptVoucher, CreateReceiptInput } from "@/server/vouchers/voucherActions";
 import { formatINR } from "@/lib/gstUtils";
+import { formatInputDate } from "@/lib/dateUtils";
+import { notify } from "@/lib/notify";
 import { Wallet, Save, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 
-export default function ReceiptVoucherPage() {
+const ReceiptVoucherPage = () => {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,7 @@ export default function ReceiptVoucherPage() {
 
   const [formData, setFormData] = useState<CreateReceiptInput>({
     voucherNo: "",
-    date: new Date().toISOString().split("T")[0],
+    date: formatInputDate(new Date()),
     receiptType: "CUSTOMER",
     customerId: "",
     customerCode: "",
@@ -94,6 +96,7 @@ export default function ReceiptVoucherPage() {
     e.preventDefault();
     if (amount <= 0) {
       setFeedback({ type: "error", message: "Please enter a valid amount greater than 0." });
+      notify.error("Please enter a valid amount greater than 0.");
       return;
     }
     setFeedback(null);
@@ -104,9 +107,11 @@ export default function ReceiptVoucherPage() {
           type: "success",
           message: `Receipt Voucher ${formData.voucherNo} posted to Day Book successfully!`,
         });
+        notify.success(`Receipt Voucher ${formData.voucherNo} posted to Day Book successfully!`);
         loadData();
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to post receipt voucher." });
+        notify.error(res.error || "Failed to post receipt voucher.");
       }
     });
   };
@@ -126,7 +131,7 @@ export default function ReceiptVoucherPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-emerald-500" />
-            <h1 className="text-xl font-bold tracking-tight">Receipt Voucher (Collections - F6)</h1>
+            <h1 className="text-xl font-bold tracking-tight">Receipt Voucher, Collections F6</h1>
           </div>
           <p className="text-xs text-muted-foreground">
             Record inflows from customers or other revenue into bank or cash account with automatic double-entry journal posting.
@@ -404,4 +409,6 @@ export default function ReceiptVoucherPage() {
       </div>
     </div>
   );
-}
+};
+
+export default ReceiptVoucherPage;

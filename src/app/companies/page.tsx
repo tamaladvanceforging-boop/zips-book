@@ -17,8 +17,9 @@ import {
   RefreshCw
 } from "lucide-react";
 import { getCompaniesAction, switchCompanyAction, shutCompanyAction } from "@/server/company/companyActions";
+import { notify } from "@/lib/notify";
 
-export default function CompaniesGatewayPage() {
+const CompaniesGatewayPage = () => {
   const router = useRouter();
   const [companies, setCompanies] = useState<any[]>([]);
   const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
@@ -43,9 +44,11 @@ export default function CompaniesGatewayPage() {
     const res = await switchCompanyAction(companyId);
     if (res.success) {
       setActiveCompanyId(companyId);
+      notify.success("Company loaded successfully! Entering ERP dashboard.");
       router.push("/dashboard" as any);
       router.refresh();
     } else {
+      notify.error(res.error || "Failed to switch company.");
       setSwitching(null);
     }
   };
@@ -53,6 +56,7 @@ export default function CompaniesGatewayPage() {
   const handleShutCompany = async () => {
     await shutCompanyAction();
     setActiveCompanyId(null);
+    notify.info("Active company shut down.");
     loadCompanies();
   };
 
@@ -290,4 +294,6 @@ export default function CompaniesGatewayPage() {
       )}
     </div>
   );
-}
+};
+
+export default CompaniesGatewayPage;

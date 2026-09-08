@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 import { createCompanyAction } from "@/server/company/companyActions";
 import { INDIAN_STATES } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 
-export default function CreateCompanyPage() {
+const CreateCompanyPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -84,6 +85,7 @@ export default function CreateCompanyPage() {
     e.preventDefault();
     if (!form.name.trim()) {
       setError("Company Name is required.");
+      notify.error("Company Name is required.");
       return;
     }
 
@@ -92,10 +94,13 @@ export default function CreateCompanyPage() {
 
     const res = await createCompanyAction(form);
     if (res.success) {
+      notify.success("Company created successfully! All Tally standard chart of accounts initialized.");
       router.push("/dashboard" as any);
       router.refresh();
     } else {
-      setError(res.error || "Failed to create company.");
+      const msg = res.error || "Failed to create company.";
+      setError(msg);
+      notify.error(msg);
       setLoading(false);
     }
   };
@@ -411,4 +416,6 @@ export default function CreateCompanyPage() {
       </form>
     </div>
   );
-}
+};
+
+export default CreateCompanyPage;

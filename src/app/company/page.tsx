@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useTransition } from "react";
 import { getCompanyProfile, updateCompanyProfile, CompanyData } from "@/server/company/companyActions";
 import { INDIAN_STATES } from "@/lib/gstUtils";
+import { notify } from "@/lib/notify";
 import { Building2, Save, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 
-export default function CompanySetupPage() {
+const CompanySetupPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -36,7 +37,7 @@ export default function CompanySetupPage() {
   });
 
   useEffect(() => {
-    async function load() {
+    const load = async () => {
       const res = await getCompanyProfile();
       if (res.success && res.data) {
         setFormData({
@@ -65,7 +66,7 @@ export default function CompanySetupPage() {
         });
       }
       setLoading(false);
-    }
+    };
     load();
   }, []);
 
@@ -85,8 +86,10 @@ export default function CompanySetupPage() {
       const res = await updateCompanyProfile(formData);
       if (res.success) {
         setFeedback({ type: "success", message: "Company profile updated successfully!" });
+        notify.success("Company profile updated successfully!");
       } else {
         setFeedback({ type: "error", message: res.error || "Failed to update profile." });
+        notify.error(res.error || "Failed to update profile.");
       }
     });
   };
@@ -378,4 +381,6 @@ export default function CompanySetupPage() {
       </form>
     </div>
   );
-}
+};
+
+export default CompanySetupPage;

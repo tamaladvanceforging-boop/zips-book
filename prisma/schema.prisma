@@ -1,0 +1,273 @@
+// Prisma schema file for ZIPS-Book (Tally-like GST Billing & Accounting)
+
+generator client {
+    provider = "prisma-client"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "sqlite"
+}
+
+model CompanyProfile {
+    id                 String   @id @default(cuid())
+    name               String   @default("Your Company Pvt Ltd")
+    addressLine1       String   @default("123 Business Park")
+    addressLine2       String   @default("Sector 5")
+    city               String   @default("Kolkata")
+    state              String   @default("West Bengal")
+    stateCode          String   @default("19")
+    pincode            String   @default("700001")
+    gstin              String   @default("19AAAAA0000A1Z5")
+    pan                String   @default("AAAAA0000A")
+    email              String   @default("info@yourcompany.com")
+    phone              String   @default("9800000000")
+    bankName           String   @default("State Bank of India")
+    bankAccountNo      String   @default("00000000000")
+    ifscCode           String   @default("SBIN0000000")
+    invoicePrefix      String   @default("INV-")
+    nextInvoiceNo      Int      @default(1)
+    purchasePrefix     String   @default("PUR-")
+    nextPurchaseNo     Int      @default(1)
+    paymentPrefix      String   @default("PMT-")
+    nextPaymentNo      Int      @default(1)
+    receiptPrefix      String   @default("RCT-")
+    nextReceiptNo      Int      @default(1)
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
+}
+
+model Account {
+    id           String        @id @default(cuid())
+    code         String        @unique
+    name         String
+    type         String        // Asset, Liability, Equity, Income, Expense
+    category     String        // Current Assets, Duties & Taxes, Current Liabilities, Capital, Sales Accounts, Purchase Accounts, Indirect Expenses
+    openingDr    Float         @default(0.0)
+    openingCr    Float         @default(0.0)
+    isSystem     Boolean       @default(false)
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+    journalLines JournalLine[]
+}
+
+model Item {
+    id            String             @id @default(cuid())
+    code          String             @unique
+    name          String
+    hsnSac        String
+    unit          String             @default("PCS")
+    rate          Float              @default(0.0)
+    gstRate       Float              @default(18.0) // 0, 5, 12, 18, 28
+    stockQty      Float              @default(0.0)
+    createdAt     DateTime           @default(now())
+    updatedAt     DateTime           @updatedAt
+    invoiceItems  InvoiceItem[]
+    purchaseItems PurchaseBillItem[]
+}
+
+model Customer {
+    id             String           @id @default(cuid())
+    code           String           @unique
+    name           String
+    address        String
+    state          String
+    stateCode      String
+    gstin          String?
+    phone          String?
+    email          String?
+    openingBalance Float            @default(0.0)
+    createdAt      DateTime         @default(now())
+    updatedAt      DateTime         @updatedAt
+    invoices       Invoice[]
+    receipts       ReceiptVoucher[]
+}
+
+model Vendor {
+    id             String           @id @default(cuid())
+    code           String           @unique
+    name           String
+    address        String
+    state          String
+    stateCode      String
+    gstin          String?
+    phone          String?
+    email          String?
+    pan            String?
+    tdsApplicable  Boolean          @default(false)
+    tdsSection     String?
+    tdsRate        Float            @default(0.0)
+    openingBalance Float            @default(0.0)
+    createdAt      DateTime         @default(now())
+    updatedAt      DateTime         @updatedAt
+    purchaseBills  PurchaseBill[]
+    payments       PaymentVoucher[]
+}
+
+model Invoice {
+    id                String           @id @default(cuid())
+    invoiceNo         String           @unique
+    invoiceDate       DateTime         @default(now())
+    dueDate           DateTime?
+    customerId        String?
+    customer          Customer?        @relation(fields: [customerId], references: [id])
+    customerName      String
+    customerAddress   String?
+    customerGstin     String?
+    customerState     String?
+    customerStateCode String?
+    supplyType        String           @default("Intra-State (CGST+SGST)")
+    taxableValue      Float            @default(0.0)
+    cgstAmount        Float            @default(0.0)
+    sgstAmount        Float            @default(0.0)
+    igstAmount        Float            @default(0.0)
+    roundOff          Float            @default(0.0)
+    totalAmount       Float            @default(0.0)
+    paidAmount        Float            @default(0.0)
+    status            String           @default("POSTED") // DRAFT, POSTED, PAID, PARTIAL, CANCELLED
+    notes             String?
+    createdAt         DateTime         @default(now())
+    updatedAt         DateTime         @updatedAt
+    items             InvoiceItem[]
+    receipts          ReceiptVoucher[]
+}
+
+model InvoiceItem {
+    id           String   @id @default(cuid())
+    invoiceId    String
+    invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+    itemId       String?
+    item         Item?    @relation(fields: [itemId], references: [id])
+    itemCode     String
+    itemName     String
+    hsnSac       String
+    unit         String   @default("PCS")
+    qty          Float
+    rate         Float
+    taxableValue Float
+    gstRate      Float
+    cgstAmount   Float
+    sgstAmount   Float
+    igstAmount   Float
+    totalAmount  Float
+}
+
+model PurchaseBill {
+    id              String             @id @default(cuid())
+    voucherNo       String             @unique
+    vendorBillNo    String?
+    billDate        DateTime           @default(now())
+    vendorId        String?
+    vendor          Vendor?            @relation(fields: [vendorId], references: [id])
+    vendorName      String
+    vendorAddress   String?
+    vendorGstin     String?
+    vendorState     String?
+    vendorStateCode String?
+    supplyType      String             @default("Intra-State (CGST+SGST)")
+    taxableValue    Float              @default(0.0)
+    cgstAmount      Float              @default(0.0)
+    sgstAmount      Float              @default(0.0)
+    igstAmount      Float              @default(0.0)
+    roundOff        Float              @default(0.0)
+    totalAmount     Float              @default(0.0)
+    paidAmount      Float              @default(0.0)
+    status          String             @default("POSTED")
+    notes           String?
+    createdAt       DateTime           @default(now())
+    updatedAt       DateTime           @updatedAt
+    items           PurchaseBillItem[]
+    payments        PaymentVoucher[]
+}
+
+model PurchaseBillItem {
+    id             String       @id @default(cuid())
+    purchaseBillId String
+    purchaseBill   PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
+    itemId         String?
+    item           Item?        @relation(fields: [itemId], references: [id])
+    itemCode       String
+    itemName       String
+    hsnSac         String
+    unit           String       @default("PCS")
+    qty            Float
+    rate           Float
+    taxableValue   Float
+    gstRate        Float
+    cgstAmount     Float
+    sgstAmount     Float
+    igstAmount     Float
+    totalAmount    Float
+}
+
+model PaymentVoucher {
+    id             String        @id @default(cuid())
+    voucherNo      String        @unique
+    date           DateTime      @default(now())
+    paymentType    String        @default("VENDOR") // VENDOR, EXPENSE
+    vendorId       String?
+    vendor         Vendor?       @relation(fields: [vendorId], references: [id])
+    vendorCode     String?
+    paidTo         String
+    purchaseBillId String?
+    purchaseBill   PurchaseBill? @relation(fields: [purchaseBillId], references: [id])
+    expenseAccount String?
+    mode           String        @default("Bank") // Bank, Cash, Cheque, UPI
+    amount         Float
+    narration      String?
+    debitAccount   String        @default("Sundry Creditors")
+    creditAccount  String        @default("Bank Account")
+    pan            String?
+    tdsApplicable  Boolean       @default(false)
+    tdsSection     String?
+    tdsRate        Float         @default(0.0)
+    tdsAmount      Float         @default(0.0)
+    netAmount      Float         @default(0.0)
+    createdAt      DateTime      @default(now())
+    updatedAt      DateTime      @updatedAt
+}
+
+model ReceiptVoucher {
+    id            String    @id @default(cuid())
+    voucherNo     String    @unique
+    date          DateTime  @default(now())
+    receiptType   String    @default("CUSTOMER") // CUSTOMER, INCOME
+    customerId    String?
+    customer      Customer? @relation(fields: [customerId], references: [id])
+    customerCode  String?
+    invoiceId     String?
+    invoice       Invoice?  @relation(fields: [invoiceId], references: [id])
+    incomeAccount String?
+    receivedFrom  String
+    mode          String    @default("Bank") // Bank, Cash, Cheque, UPI
+    amount        Float
+    narration     String?
+    debitAccount  String    @default("Bank Account")
+    creditAccount String    @default("Sundry Debtors")
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+}
+
+model JournalEntry {
+    id          String        @id @default(cuid())
+    entryDate   DateTime      @default(now())
+    voucherType String        // Sales, Purchase, Payment, Receipt, Journal, Contra
+    voucherNo   String
+    narration   String?
+    referenceId String?
+    createdAt   DateTime      @default(now())
+    updatedAt   DateTime      @updatedAt
+    lines       JournalLine[]
+}
+
+model JournalLine {
+    id             String       @id @default(cuid())
+    journalEntryId String
+    journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+    accountId      String?
+    account        Account?     @relation(fields: [accountId], references: [id])
+    accountName    String
+    debit          Float        @default(0.0)
+    credit         Float        @default(0.0)
+    narration      String?
+}

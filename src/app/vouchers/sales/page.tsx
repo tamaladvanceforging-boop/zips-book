@@ -96,6 +96,7 @@ const SalesInvoicePage = () => {
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectCustomer = (cust: any, companyStateCode = company?.stateCode || "19") => {

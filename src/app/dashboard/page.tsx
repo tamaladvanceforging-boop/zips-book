@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getDashboardStats } from "@/server/reports/reportActions";
 import { formatINR } from "@/lib/gstUtils";
+import { AppLogo } from "@/components/UI/AppLogo";
 import {
   FileText,
   DollarSign,
@@ -20,7 +21,6 @@ import {
   Landmark,
   Coins,
   BookMarked,
-  Sparkles,
   Layers
 } from "lucide-react";
 
@@ -53,10 +53,12 @@ const DashboardPage = async () => {
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Top Banner: Gateway of Tally Header */}
+      {/* Top Banner: ZIPS-Book Enterprise Gateway Header */}
       {!company ? (
         <div className="p-8 rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-500/5 text-center space-y-4">
-          <Building2 className="h-12 w-12 text-emerald-500 mx-auto" />
+          <div className="flex justify-center">
+            <AppLogo size="xl" showText={false} />
+          </div>
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-foreground">No Active Company Selected</h2>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
@@ -82,11 +84,9 @@ const DashboardPage = async () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-2xl border border-border bg-gradient-to-r from-card via-card to-emerald-500/[0.04] p-6 shadow-sm">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-              </span>
+              <AppLogo size="xs" showText={false} />
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                Gateway of Tally &bull; Active Workspace
+                ZIPS-Book Gateway &bull; Active Workspace
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
@@ -120,7 +120,7 @@ const DashboardPage = async () => {
         </div>
       )}
 
-      {/* Tally Shortcuts Quick Bar */}
+      {/* Quick Shortcuts Bar */}
       <div className="p-3 rounded-xl border border-border bg-card/60 flex items-center justify-between overflow-x-auto text-xs text-muted-foreground gap-3">
         <div className="flex items-center gap-2 font-semibold text-foreground shrink-0">
           <Layers className="h-3.5 w-3.5 text-emerald-500" />
@@ -255,7 +255,7 @@ const DashboardPage = async () => {
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
-            Tally Operational Modules & Registers
+            Enterprise Operational Modules & Registers
           </h2>
           <span className="text-xs text-muted-foreground font-mono">
             Press <kbd className="rounded bg-muted px-1.5 py-0.5 border text-foreground font-bold">Alt+G</kbd> for Go To Search

@@ -165,7 +165,7 @@ async function main() {
     },
   });
 
-  const cust2 = await prisma.customer.create({
+  await prisma.customer.create({
     data: {
       companyId: company.id,
       code: 'CUS-002',
@@ -200,7 +200,7 @@ async function main() {
     },
   });
 
-  const vend2 = await prisma.vendor.create({
+  await prisma.vendor.create({
     data: {
       companyId: company.id,
       code: 'VEN-002',

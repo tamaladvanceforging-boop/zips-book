@@ -24,7 +24,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* Tally Go-To Command Dialog */}
+      {/* Quick Jump Command Dialog */}
       <CommandPalette />
 
       {/* Modern Classic ERP Sidebar */}

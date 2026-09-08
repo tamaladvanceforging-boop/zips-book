@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loginAction } from "@/server/auth/authActions";
 import { notify } from "@/lib/notify";
+import { AppLogo } from "@/components/UI/AppLogo";
 import { 
-  Building2, 
   Lock, 
   Mail, 
   ArrowRight, 
@@ -37,7 +37,7 @@ const LoginPage = () => {
 
     const res = await loginAction({ email, password });
     if (res.success) {
-      notify.success("Welcome back! Loading Tally ERP Workspace...");
+      notify.success("Welcome back! Loading Enterprise ERP Workspace...");
       router.push("/dashboard" as any);
       router.refresh();
     } else {
@@ -64,29 +64,19 @@ const LoginPage = () => {
 
         {/* Brand Header */}
         <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-              <Building2 className="h-6 w-6 text-black" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black tracking-tight text-white">ZIPS-Book</span>
-                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  ERP Prime
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 font-medium tracking-wide">
-                Enterprise GST Billing & Double-Entry Accounting
-              </p>
-            </div>
-          </div>
+          <AppLogo
+            size="lg"
+            showText
+            subtitle="Enterprise GST Billing & Double-Entry Accounting"
+            badge="ERP Prime"
+          />
         </div>
 
         {/* Center Content */}
         <div className="relative z-10 max-w-xl space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
             <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-            Tally-Speed Keyboard First Architecture
+            High-Speed Keyboard First Architecture
           </div>
 
           <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight text-zinc-100">
@@ -117,8 +107,8 @@ const LoginPage = () => {
 
         {/* Footer info */}
         <div className="relative z-10 flex items-center justify-between text-xs text-zinc-400 border-t border-zinc-800/80 pt-6">
-          <span>Authored by <strong className="text-zinc-200">Tamal Roy Chowdhury</strong></span>
-          <span>MIT Licensed Open Core</span>
+          <span>Authored & Owned by <strong className="text-zinc-200">Tamal Roy Chowdhury</strong></span>
+          <span>Proprietary Software • © 2026 Tamal Roy Chowdhury</span>
         </div>
       </div>
 
@@ -127,13 +117,7 @@ const LoginPage = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile Brand */}
           <div className="lg:hidden flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-black" />
-            </div>
-            <div>
-              <span className="text-xl font-bold text-foreground">ZIPS-Book</span>
-              <p className="text-xs text-muted-foreground">Enterprise ERP</p>
-            </div>
+            <AppLogo size="md" showText subtitle="Enterprise ERP" />
           </div>
 
           <div className="space-y-2">

@@ -91,6 +91,7 @@ const PurchaseBillPage = () => {
       setLoading(false);
     }
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectVendor = (v: any, compStateCode = company?.stateCode || "19") => {

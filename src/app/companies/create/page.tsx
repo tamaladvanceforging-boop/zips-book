@@ -94,7 +94,7 @@ const CreateCompanyPage = () => {
 
     const res = await createCompanyAction(form);
     if (res.success) {
-      notify.success("Company created successfully! All Tally standard chart of accounts initialized.");
+      notify.success("Company created successfully! Standard chart of accounts initialized.");
       router.push("/dashboard" as any);
       router.refresh();
     } else {
@@ -116,7 +116,7 @@ const CreateCompanyPage = () => {
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to Company Gateway
         </Link>
-        <span className="text-xs text-muted-foreground font-mono">Tally Form F3 • Company Creation</span>
+        <span className="text-xs text-muted-foreground font-mono">Company Provisioning • F3</span>
       </div>
 
       {/* Header Banner */}
@@ -130,7 +130,7 @@ const CreateCompanyPage = () => {
             Create Enterprise Company
           </h1>
           <p className="text-xs text-zinc-400">
-            Creates isolated books of accounts and automatically initializes the Standard Tally Chart of Accounts.
+            Creates isolated books of accounts and automatically initializes the Standard Chart of Accounts.
           </p>
         </div>
         <Building2 className="h-10 w-10 text-emerald-400/40 shrink-0 hidden sm:block" />

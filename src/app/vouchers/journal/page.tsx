@@ -223,7 +223,7 @@ const JournalVoucherPage = () => {
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                   F7 Hotkey
                 </span>
-                <span className="text-xs text-muted-foreground font-mono">Tally Prime Compatible</span>
+                <span className="text-xs text-muted-foreground font-mono">Double-Entry Compliant</span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2 mt-1">
                 <BookOpen className="w-6 h-6 text-indigo-400" />

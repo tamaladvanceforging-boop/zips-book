@@ -98,7 +98,7 @@ const ChartOfAccountsPage = () => {
             <h1 className="text-xl font-bold tracking-tight">Chart of Accounts (COA)</h1>
           </div>
           <p className="text-xs text-muted-foreground">
-            Master ledger list supporting Tally double-entry bookkeeping (Assets, Liabilities, Equity, Income, Expenses).
+            Master ledger list supporting standard double-entry bookkeeping (Assets, Liabilities, Equity, Income, Expenses).
           </p>
         </div>
 

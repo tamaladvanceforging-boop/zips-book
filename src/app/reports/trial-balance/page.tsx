@@ -38,7 +38,7 @@ const TrialBalancePage = () => {
 
   const exportOptions = {
     filename: `trial-balance-${formatInputDate(new Date())}`,
-    title: "Trial Balance Statement (Tally Verification)",
+    title: "Trial Balance Statement (Ledger Verification)",
     subtitle: `Closing Dr: ${formatINR(totals.closingDr || 0)} | Closing Cr: ${formatINR(totals.closingCr || 0)} | Status: ${isBalanced ? "Balanced" : `Diff: ${formatINR(totals.difference || 0)}`}`,
     sheetName: "Trial_Balance",
     headers: [
@@ -72,7 +72,7 @@ const TrialBalancePage = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-sky-500" />
-            <h1 className="text-xl font-bold tracking-tight">Trial Balance (Tally-Style Verification)</h1>
+            <h1 className="text-xl font-bold tracking-tight">Trial Balance (Double-Entry Verification)</h1>
           </div>
           <p className="text-xs text-muted-foreground">
             Summary statement of all ledger account closing balances verifying that Total Debits equal Total Credits.

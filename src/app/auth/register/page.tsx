@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { registerAction } from "@/server/auth/authActions";
 import { notify } from "@/lib/notify";
+import { AppLogo } from "@/components/UI/AppLogo";
 import { 
-  Building2, 
   Lock, 
   Mail, 
   User, 
@@ -54,15 +54,12 @@ const RegisterPage = () => {
       {/* Left Column: Brand summary */}
       <div className="hidden lg:flex lg:col-span-6 relative flex-col justify-between p-12 bg-gradient-to-br from-slate-950 via-zinc-900 to-emerald-950 text-white border-r border-emerald-500/20 overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-              <Building2 className="h-6 w-6 text-black" />
-            </div>
-            <div>
-              <span className="text-2xl font-black tracking-tight text-white">ZIPS-Book</span>
-              <p className="text-xs text-zinc-400 font-medium">Enterprise ERP & Accounting</p>
-            </div>
-          </div>
+          <AppLogo
+            size="lg"
+            showText
+            subtitle="Enterprise ERP & Accounting"
+            badge="ERP Prime"
+          />
         </div>
 
         <div className="relative z-10 max-w-lg space-y-4">
@@ -78,14 +75,20 @@ const RegisterPage = () => {
           </p>
         </div>
 
-        <div className="relative z-10 text-xs text-zinc-400 border-t border-zinc-800 pt-6">
-          <span>Authored by <strong className="text-zinc-200">Tamal Roy Chowdhury</strong></span>
+        <div className="relative z-10 flex items-center justify-between text-xs text-zinc-400 border-t border-zinc-800 pt-6">
+          <span>Authored & Owned by <strong className="text-zinc-200">Tamal Roy Chowdhury</strong></span>
+          <span>Proprietary Software • © 2026 Tamal Roy Chowdhury</span>
         </div>
       </div>
 
       {/* Right Column: Register Form */}
       <div className="lg:col-span-6 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md space-y-6">
+          {/* Mobile Brand */}
+          <div className="lg:hidden flex items-center gap-3 mb-4">
+            <AppLogo size="md" showText subtitle="Enterprise ERP" />
+          </div>
+
           <Link href={"/auth/login" as any} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Sign In

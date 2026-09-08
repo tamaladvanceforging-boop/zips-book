@@ -191,7 +191,7 @@ const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Middle: Tally "Go To" Command Trigger */}
+      {/* Middle: Quick Jump Command Trigger */}
       <div className="hidden md:flex items-center">
         <button
           onClick={() => {

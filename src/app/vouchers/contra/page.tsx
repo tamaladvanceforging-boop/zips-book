@@ -112,9 +112,9 @@ const ContraVoucherPage = () => {
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Gateway of Tally
+          Back to Enterprise Gateway
         </Link>
-        <span className="text-xs font-mono text-muted-foreground">Tally Voucher: F4 Contra</span>
+        <span className="text-xs font-mono text-muted-foreground">Voucher Entry: F4 Contra</span>
       </div>
 
       {/* Main Title Banner */}

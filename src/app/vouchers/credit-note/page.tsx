@@ -257,10 +257,10 @@ const CreditNotePage = () => {
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Gateway of Tally
+          Back to Enterprise Gateway
         </Link>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground">Tally Voucher: Alt+F6 / Ctrl+F8</span>
+          <span className="text-xs font-mono text-muted-foreground">Voucher Entry: Alt+F6</span>
           <Link
             href={"/registers/credit-notes" as any}
             className="text-xs font-semibold text-emerald-600 hover:text-emerald-500 underline underline-offset-4"

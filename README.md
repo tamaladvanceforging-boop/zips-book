@@ -1,27 +1,27 @@
-# 📚 ZIPS-Book | Enterprise Tally ERP & GST Billing System
+# 📚 ZIPS-Book | Enterprise ERP & GST Billing System
 
 <p align="center">
   <img src="https://img.shields.io/badge/zips--book-v1.0.0-0a0a0a?style=for-the-badge&logo=next.js&logoColor=white" alt="zips-book">
   <img src="https://img.shields.io/badge/Next.js-16.3-black?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react&logoColor=white" alt="React">
   <img src="https://img.shields.io/badge/Prisma-7-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma">
-  <img src="https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/License-Proprietary-rose?style=for-the-badge" alt="License">
 </p>
 
 ---
 
 ## 🌟 Overview
-**ZIPS-Book** is a modern, dashing, classic full-stack ERP and GST Billing Application inspired by **TallyPrime**, engineered to handle end-to-end industrial manufacturing and trading operations.
+**ZIPS-Book** is a modern, dashing, classic full-stack Enterprise ERP and GST Billing Application, engineered to handle end-to-end industrial manufacturing and trading operations.
 
 Modeled strictly from the **18 operational modules of ZIPS-Billing-System.xlsx**, this system enforces **pure double-entry bookkeeping**, automated multi-slab GST calculation (Intra-State CGST+SGST vs Inter-State IGST), real-time stock and ledger updates, printable tax invoices, and full financial reporting (Trial Balance, P&L, Balance Sheet, and GST returns).
 
 - **Author**: Tamal Roy Chowdhury
 - **Repository**: [https://github.com/tamaladvanceforging-boop/zips-book](https://github.com/tamaladvanceforging-boop/zips-book)
-- **License**: MIT
+- **License**: Proprietary (Copyright © 2026 Tamal Roy Chowdhury. All rights reserved.)
 
 ---
 
-## ⚡ Key Highlights (Tally-Style Capabilities)
+## ⚡ Key Highlights (Enterprise ERP Capabilities)
 
 1. **Strict Double-Entry Bookkeeping**:
    - Every invoice, purchase bill, payment, and receipt atomically writes corresponding Debit (Dr) and Credit (Cr) legs to the JournalEntry and JournalLine tables.
@@ -121,7 +121,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. You will be
 
 | Shortcut | Action |
 | :--- | :--- |
-| Alt + G / Ctrl + K | Open **Tally "Go To" Command Palette** |
+| Alt + G / Ctrl + K | Open **"Go To" Quick Jump Command Palette** |
 | F5 | Open **Payment Voucher** |
 | F6 | Open **Receipt Voucher** |
 | F8 | Open **Sales Invoice (Tax Invoice)** |
@@ -131,5 +131,5 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. You will be
 ---
 
 ## 📜 License
-This project is open-source and licensed under the [MIT License](LICENSE).
-Created with ❤️ by **Tamal Roy Chowdhury**.
+This software is proprietary and confidential. Copyright © 2026 **Tamal Roy Chowdhury**. All rights reserved.
+Unauthorized copying, modification, or distribution is strictly prohibited.

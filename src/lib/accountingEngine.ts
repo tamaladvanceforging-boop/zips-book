@@ -1,4 +1,4 @@
-// Core Tally-Style Double-Entry Accounting Engine for ZIPS-Book (Multi-Company ERP)
+// Core Double-Entry Accounting Engine for ZIPS-Book (Multi-Company ERP)
 import prisma from '@/lib/dbClient/dbClient';
 
 export interface InvoicePostingPayload {

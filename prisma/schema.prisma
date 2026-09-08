@@ -1,4 +1,4 @@
-// Prisma schema file for ZIPS-Book (Tally-like GST Billing & Enterprise ERP)
+// Prisma schema file for ZIPS-Book (Enterprise GST Billing & Multi-Company ERP)
 
 generator client {
     provider = "prisma-client"

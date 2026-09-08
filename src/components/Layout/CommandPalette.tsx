@@ -37,7 +37,7 @@ interface CommandItem {
 }
 
 const commands: CommandItem[] = [
-  { title: "Gateway of Tally (Dashboard)", category: "Gateway", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Enterprise Gateway (Dashboard)", category: "Gateway", href: "/dashboard", icon: LayoutDashboard },
   { title: "Select Company", category: "Gateway", href: "/companies", shortcut: "F1", icon: Building2 },
   { title: "Create New Company", category: "Gateway", href: "/companies/create", shortcut: "F3", icon: PlusCircle },
   { title: "Alter Company Profile", category: "Gateway", href: "/company", shortcut: "Alt+F3", icon: Settings2 },
@@ -72,7 +72,7 @@ export const CommandPalette = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+K or Alt+G (Tally shortcut)
+      // Ctrl+K or Alt+G (Quick Jump shortcut)
       if ((e.ctrlKey && e.key.toLowerCase() === "k") || (e.altKey && e.key.toLowerCase() === "g")) {
         e.preventDefault();
         setOpen((prev) => !prev);

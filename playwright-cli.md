@@ -12,7 +12,7 @@ Running record of UI element names, routes, form shapes, and flow gotchas discov
 | `/companies` | Select Company Gateway | Requires active user session |
 | `/companies/create` | Create Company (`F3`) | Requires active user session |
 | `/company` | Alter Company (`Alt+F3`) | Requires active company |
-| `/dashboard` | Gateway of Tally | Requires active user & active company |
+| `/dashboard` | Enterprise Gateway | Requires active user & active company |
 | `/masters/items` | Item Master | Stock items, HSN/SAC, units, GST rates |
 | `/masters/customers` | Customer Master | Sundry Debtors, GSTIN, states |
 | `/masters/vendors` | Vendor Master | Sundry Creditors, GSTIN, states |

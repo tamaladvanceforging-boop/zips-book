@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { getCompaniesAction, switchCompanyAction, shutCompanyAction } from "@/server/company/companyActions";
 import { notify } from "@/lib/notify";
+import { AppLogo } from "@/components/UI/AppLogo";
 
 const CompaniesGatewayPage = () => {
   const router = useRouter();
@@ -68,7 +69,7 @@ const CompaniesGatewayPage = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Banner / Tally Header */}
+      {/* Top Banner / Enterprise Header */}
       <div className="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-slate-900 via-zinc-900 to-emerald-950 text-white border border-emerald-500/20 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
           <Building2 className="w-64 h-64 text-emerald-400" />
@@ -77,8 +78,8 @@ const CompaniesGatewayPage = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-500/30">
-              <Building2 className="h-3.5 w-3.5" />
-              Gateway of Tally • Company Management
+              <AppLogo size="xs" showText={false} />
+              ZIPS-Book Gateway • Company Management
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-zinc-100">
               Select or Create Enterprise Company

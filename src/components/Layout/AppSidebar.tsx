@@ -22,7 +22,6 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   PlusCircle,
   Settings2,
   ArrowLeftRight,
@@ -30,6 +29,7 @@ import {
   Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppLogo } from "@/components/UI/AppLogo";
 
 interface NavGroup {
   label: string;
@@ -45,7 +45,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Gateway & Company",
     items: [
-      { href: "/dashboard", label: "Gateway of Tally", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Enterprise Gateway", icon: LayoutDashboard },
       { href: "/companies", label: "Select Company", icon: Building2, shortcut: "F1" },
       { href: "/companies/create", label: "Create Company", icon: PlusCircle, shortcut: "F3" },
       { href: "/company", label: "Alter Company", icon: Settings2, shortcut: "Alt+F3" },
@@ -107,21 +107,13 @@ export const AppSidebar = () => {
       )}
     >
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-border">
+      <div className="flex items-center justify-between h-14 px-3 border-b border-border">
         {!collapsed && (
-          <Link href={"/dashboard" as any} className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/20">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-sm tracking-tight leading-tight">ZIPS-Book</span>
-              <span className="text-[10px] text-muted-foreground font-mono">Tally-Style ERP</span>
-            </div>
-          </Link>
+          <AppLogo size="sm" showText subtitle="Enterprise ERP" href="/dashboard" />
         )}
         {collapsed && (
-          <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
-            <Sparkles className="h-4 w-4" />
+          <div className="mx-auto">
+            <AppLogo size="xs" showText={false} href="/dashboard" />
           </div>
         )}
         <button
@@ -185,14 +177,14 @@ export const AppSidebar = () => {
       {/* Sidebar Footer */}
       <div className="p-3 border-t border-border text-[11px] text-muted-foreground text-center">
         {!collapsed ? (
-          <div className="truncate">
+          <div className="space-y-0.5">
             <span className="font-semibold text-foreground">ZIPS-Book ERP</span>
-            <div className="text-[10px] opacity-75">Multi-Company Architecture</div>
+            <div className="text-[10px] text-muted-foreground">© 2026 Tamal Roy Chowdhury</div>
           </div>
         ) : (
-          <div className="font-mono text-[9px]">v1.0</div>
+          <div className="font-mono text-[9px]">© 2026</div>
         )}
       </div>
     </aside>
   );
-}
+};

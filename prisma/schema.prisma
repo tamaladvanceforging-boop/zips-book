@@ -61,6 +61,12 @@ model Company {
     nextPaymentNo      Int              @default(1)
     receiptPrefix      String           @default("RCT-")
     nextReceiptNo      Int              @default(1)
+    creditNotePrefix   String           @default("CRN-")
+    nextCreditNoteNo   Int              @default(1)
+    debitNotePrefix    String           @default("DBN-")
+    nextDebitNoteNo    Int              @default(1)
+    contraPrefix       String           @default("CTR-")
+    nextContraNo       Int              @default(1)
     createdAt          DateTime         @default(now())
     updatedAt          DateTime         @updatedAt
     users              UserCompany[]
@@ -72,6 +78,9 @@ model Company {
     purchaseBills      PurchaseBill[]
     payments           PaymentVoucher[]
     receipts           ReceiptVoucher[]
+    creditNotes        CreditNote[]
+    debitNotes         DebitNote[]
+    contraVouchers     ContraVoucher[]
     journalEntries     JournalEntry[]
 }
 
@@ -106,20 +115,22 @@ model Account {
 }
 
 model Item {
-    id            String             @id @default(cuid())
-    companyId     String
-    company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-    code          String
-    name          String
-    hsnSac        String
-    unit          String             @default("PCS")
-    rate          Float              @default(0.0)
-    gstRate       Float              @default(18.0) // 0, 5, 12, 18, 28
-    stockQty      Float              @default(0.0)
-    createdAt     DateTime           @default(now())
-    updatedAt     DateTime           @updatedAt
-    invoiceItems  InvoiceItem[]
-    purchaseItems PurchaseBillItem[]
+    id              String             @id @default(cuid())
+    companyId       String
+    company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    code            String
+    name            String
+    hsnSac          String
+    unit            String             @default("PCS")
+    rate            Float              @default(0.0)
+    gstRate         Float              @default(18.0) // 0, 5, 12, 18, 28
+    stockQty        Float              @default(0.0)
+    createdAt       DateTime           @default(now())
+    updatedAt       DateTime           @updatedAt
+    invoiceItems    InvoiceItem[]
+    purchaseItems   PurchaseBillItem[]
+    creditNoteItems CreditNoteItem[]
+    debitNoteItems  DebitNoteItem[]
 
     @@unique([companyId, code])
 }
@@ -141,6 +152,7 @@ model Customer {
     updatedAt      DateTime         @updatedAt
     invoices       Invoice[]
     receipts       ReceiptVoucher[]
+    creditNotes    CreditNote[]
 
     @@unique([companyId, code])
 }
@@ -166,6 +178,7 @@ model Vendor {
     updatedAt      DateTime         @updatedAt
     purchaseBills  PurchaseBill[]
     payments       PaymentVoucher[]
+    debitNotes     DebitNote[]
 
     @@unique([companyId, code])
 }
@@ -274,6 +287,125 @@ model PurchaseBillItem {
     totalAmount    Float
 }
 
+model CreditNote {
+    id                  String           @id @default(cuid())
+    companyId           String
+    company             Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    noteNo              String
+    noteDate            DateTime         @default(now())
+    originalInvoiceNo   String?
+    originalInvoiceDate DateTime?
+    customerId          String?
+    customer            Customer?        @relation(fields: [customerId], references: [id])
+    customerName        String
+    customerGstin       String?
+    customerState       String?
+    customerStateCode   String?
+    supplyType          String           @default("Intra-State (CGST+SGST)")
+    reason              String           @default("Sales Return")
+    taxableValue        Float            @default(0.0)
+    cgstAmount          Float            @default(0.0)
+    sgstAmount          Float            @default(0.0)
+    igstAmount          Float            @default(0.0)
+    roundOff            Float            @default(0.0)
+    totalAmount         Float            @default(0.0)
+    status              String           @default("POSTED")
+    notes               String?
+    createdAt           DateTime         @default(now())
+    updatedAt           DateTime         @updatedAt
+    items               CreditNoteItem[]
+
+    @@unique([companyId, noteNo])
+}
+
+model CreditNoteItem {
+    id           String     @id @default(cuid())
+    creditNoteId String
+    creditNote   CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+    itemId       String?
+    item         Item?      @relation(fields: [itemId], references: [id])
+    itemCode     String
+    itemName     String
+    hsnSac       String
+    unit         String     @default("PCS")
+    qty          Float
+    rate         Float
+    taxableValue Float
+    gstRate      Float
+    cgstAmount   Float
+    sgstAmount   Float
+    igstAmount   Float
+    totalAmount  Float
+}
+
+model DebitNote {
+    id                String          @id @default(cuid())
+    companyId         String
+    company           Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    noteNo            String
+    noteDate          DateTime        @default(now())
+    originalBillNo    String?
+    originalBillDate  DateTime?
+    vendorId          String?
+    vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+    vendorName        String
+    vendorGstin       String?
+    vendorState       String?
+    vendorStateCode   String?
+    supplyType        String          @default("Intra-State (CGST+SGST)")
+    reason            String          @default("Purchase Return")
+    taxableValue      Float           @default(0.0)
+    cgstAmount        Float           @default(0.0)
+    sgstAmount        Float           @default(0.0)
+    igstAmount        Float           @default(0.0)
+    roundOff          Float           @default(0.0)
+    totalAmount       Float           @default(0.0)
+    status            String          @default("POSTED")
+    notes             String?
+    createdAt         DateTime        @default(now())
+    updatedAt         DateTime        @updatedAt
+    items             DebitNoteItem[]
+
+    @@unique([companyId, noteNo])
+}
+
+model DebitNoteItem {
+    id          String    @id @default(cuid())
+    debitNoteId String
+    debitNote   DebitNote @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+    itemId      String?
+    item        Item?     @relation(fields: [itemId], references: [id])
+    itemCode    String
+    itemName    String
+    hsnSac      String
+    unit        String    @default("PCS")
+    qty         Float
+    rate        Float
+    taxableValue Float
+    gstRate     Float
+    cgstAmount  Float
+    sgstAmount  Float
+    igstAmount  Float
+    totalAmount Float
+}
+
+model ContraVoucher {
+    id            String   @id @default(cuid())
+    companyId     String
+    company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+    voucherNo     String
+    date          DateTime @default(now())
+    transferType  String   @default("CASH_TO_BANK") // CASH_TO_BANK, BANK_TO_CASH, BANK_TO_BANK
+    sourceAccount String
+    targetAccount String
+    amount        Float
+    narration     String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    @@unique([companyId, voucherNo])
+}
+
 model PaymentVoucher {
     id             String        @id @default(cuid())
     companyId      String
@@ -335,7 +467,7 @@ model JournalEntry {
     companyId   String
     company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
     entryDate   DateTime      @default(now())
-    voucherType String        // Sales, Purchase, Payment, Receipt, Journal, Contra
+    voucherType String        // Sales, Purchase, Payment, Receipt, Credit Note, Debit Note, Contra, Journal
     voucherNo   String
     narration   String?
     referenceId String?

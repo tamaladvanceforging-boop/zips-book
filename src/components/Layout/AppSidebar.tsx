@@ -25,6 +25,9 @@ import {
   Sparkles,
   PlusCircle,
   Settings2,
+  ArrowLeftRight,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +67,10 @@ const navGroups: NavGroup[] = [
       { href: "/vouchers/purchase", label: "Purchase Bill", icon: Receipt, shortcut: "F9" },
       { href: "/vouchers/payment", label: "Payment Voucher", icon: CreditCard, shortcut: "F5" },
       { href: "/vouchers/receipt", label: "Receipt Voucher", icon: Wallet, shortcut: "F6" },
+      { href: "/vouchers/contra", label: "Contra Voucher", icon: ArrowLeftRight, shortcut: "F4" },
+      { href: "/vouchers/journal", label: "Journal Voucher", icon: BookOpen, shortcut: "F7" },
+      { href: "/vouchers/credit-note", label: "Credit Note", icon: Undo2, shortcut: "Alt+F6" },
+      { href: "/vouchers/debit-note", label: "Debit Note", icon: Redo2, shortcut: "Alt+F5" },
     ],
   },
   {
@@ -71,6 +78,8 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/registers/sales", label: "Sales Register", icon: BookMarked },
       { href: "/registers/purchase", label: "Purchase Register", icon: BookMarked },
+      { href: "/registers/credit-notes", label: "Credit Note Register", icon: Undo2 },
+      { href: "/registers/debit-notes", label: "Debit Note Register", icon: Redo2 },
       { href: "/registers/daybook", label: "Day Book (Journal)", icon: BookOpen },
     ],
   },
@@ -86,7 +95,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppSidebar() {
+export const AppSidebar = () => {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 

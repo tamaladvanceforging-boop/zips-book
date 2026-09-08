@@ -56,13 +56,64 @@ export interface ReceiptPostingPayload {
   narration?: string;
 }
 
+export interface CreditNotePostingPayload {
+  companyId: string;
+  creditNoteId: string;
+  noteNo: string;
+  customerName: string;
+  taxableValue: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  date?: Date;
+  items: { itemId?: string | null; qty: number }[];
+}
+
+export interface DebitNotePostingPayload {
+  companyId: string;
+  debitNoteId: string;
+  noteNo: string;
+  vendorName: string;
+  taxableValue: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  totalAmount: number;
+  date?: Date;
+  items: { itemId?: string | null; qty: number }[];
+}
+
+export interface ContraPostingPayload {
+  companyId: string;
+  voucherNo: string;
+  date?: Date;
+  sourceAccount: string;
+  targetAccount: string;
+  amount: number;
+  narration?: string;
+}
+
+export interface JournalPostingPayload {
+  companyId: string;
+  voucherNo: string;
+  date?: Date;
+  narration?: string;
+  lines: {
+    accountId?: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+    narration?: string;
+  }[];
+}
+
 /**
  * Post Sales Invoice to Day Book (Journal) and update inventory stock
  */
 export const postSalesInvoiceToAccounting = async (payload: InvoicePostingPayload) => {
   const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
 
-  // 1. Create Double-Entry Journal scoped to company
   await prisma.journalEntry.create({
     data: {
       companyId: payload.companyId,
@@ -100,7 +151,6 @@ export const postSalesInvoiceToAccounting = async (payload: InvoicePostingPayloa
     },
   });
 
-  // 2. Reduce Stock Quantity for inventory tracking
   for (const itm of payload.items) {
     if (itm.itemId) {
       await prisma.item.update({
@@ -117,7 +167,6 @@ export const postSalesInvoiceToAccounting = async (payload: InvoicePostingPayloa
 export const postPurchaseBillToAccounting = async (payload: PurchasePostingPayload) => {
   const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
 
-  // 1. Create Double-Entry Journal scoped to company
   await prisma.journalEntry.create({
     data: {
       companyId: payload.companyId,
@@ -155,7 +204,6 @@ export const postPurchaseBillToAccounting = async (payload: PurchasePostingPaylo
     },
   });
 
-  // 2. Increase Stock Quantity for inventory tracking
   for (const itm of payload.items) {
     if (itm.itemId) {
       await prisma.item.update({
@@ -172,7 +220,6 @@ export const postPurchaseBillToAccounting = async (payload: PurchasePostingPaylo
 export const postPaymentVoucherToAccounting = async (payload: PaymentPostingPayload) => {
   const lines: { accountName: string; debit: number; credit: number; narration?: string }[] = [];
 
-  // Debit target (Sundry Creditors or Expense Account)
   lines.push({
     accountName: payload.debitAccount,
     debit: payload.amount,
@@ -180,7 +227,6 @@ export const postPaymentVoucherToAccounting = async (payload: PaymentPostingPayl
     narration: payload.narration || 'Paid to ' + payload.paidTo,
   });
 
-  // Credit source (Cash or Bank)
   const tds = payload.tdsAmount || 0;
   const netPaid = payload.amount - tds;
 
@@ -240,6 +286,176 @@ export const postReceiptVoucherToAccounting = async (payload: ReceiptPostingPayl
             narration: 'Credit to ' + payload.receivedFrom,
           },
         ],
+      },
+    },
+  });
+};
+
+/**
+ * Post Credit Note (Sales Return) to Day Book & Restock Inventory
+ */
+export const postCreditNoteToAccounting = async (payload: CreditNotePostingPayload) => {
+  const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
+
+  await prisma.journalEntry.create({
+    data: {
+      companyId: payload.companyId,
+      voucherType: 'Credit Note',
+      voucherNo: payload.noteNo,
+      referenceId: payload.creditNoteId,
+      entryDate: payload.date || new Date(),
+      narration: 'Credit Note (Sales Return) ' + payload.noteNo + ' - ' + payload.customerName,
+      lines: {
+        create: [
+          {
+            accountName: 'Sales Return Account',
+            debit: payload.taxableValue,
+            credit: 0,
+            narration: 'Sales Return / Value Reversal',
+          },
+          ...(totalTax > 0
+            ? [
+                {
+                  accountName: 'GST Payable',
+                  debit: totalTax,
+                  credit: 0,
+                  narration: 'Output GST Reversal on Return',
+                },
+              ]
+            : []),
+          {
+            accountName: 'Sundry Debtors',
+            debit: 0,
+            credit: payload.totalAmount,
+            narration: 'Credit adjustment to ' + payload.customerName,
+          },
+        ],
+      },
+    },
+  });
+
+  // Restock inventory for returned items
+  for (const itm of payload.items) {
+    if (itm.itemId) {
+      await prisma.item.update({
+        where: { id: itm.itemId },
+        data: { stockQty: { increment: itm.qty } },
+      });
+    }
+  }
+};
+
+/**
+ * Post Debit Note (Purchase Return) to Day Book & Reduce Inventory
+ */
+export const postDebitNoteToAccounting = async (payload: DebitNotePostingPayload) => {
+  const totalTax = payload.cgstAmount + payload.sgstAmount + payload.igstAmount;
+
+  await prisma.journalEntry.create({
+    data: {
+      companyId: payload.companyId,
+      voucherType: 'Debit Note',
+      voucherNo: payload.noteNo,
+      referenceId: payload.debitNoteId,
+      entryDate: payload.date || new Date(),
+      narration: 'Debit Note (Purchase Return) ' + payload.noteNo + ' - ' + payload.vendorName,
+      lines: {
+        create: [
+          {
+            accountName: 'Sundry Creditors',
+            debit: payload.totalAmount,
+            credit: 0,
+            narration: 'Debit adjustment to ' + payload.vendorName,
+          },
+          {
+            accountName: 'Purchase Return Account',
+            debit: 0,
+            credit: payload.taxableValue,
+            narration: 'Purchase Return / Value Reversal',
+          },
+          ...(totalTax > 0
+            ? [
+                {
+                  accountName: 'GST Input Credit',
+                  debit: 0,
+                  credit: totalTax,
+                  narration: 'Input Tax Credit Reversal on Return',
+                },
+              ]
+            : []),
+        ],
+      },
+    },
+  });
+
+  // Deduct inventory for returned items
+  for (const itm of payload.items) {
+    if (itm.itemId) {
+      await prisma.item.update({
+        where: { id: itm.itemId },
+        data: { stockQty: { decrement: itm.qty } },
+      });
+    }
+  }
+};
+
+/**
+ * Post Contra Voucher (F4) - Internal Cash & Bank Transfers
+ */
+export const postContraVoucherToAccounting = async (payload: ContraPostingPayload) => {
+  await prisma.journalEntry.create({
+    data: {
+      companyId: payload.companyId,
+      voucherType: 'Contra',
+      voucherNo: payload.voucherNo,
+      entryDate: payload.date || new Date(),
+      narration: payload.narration || 'Contra transfer: ' + payload.sourceAccount + ' to ' + payload.targetAccount,
+      lines: {
+        create: [
+          {
+            accountName: payload.targetAccount,
+            debit: payload.amount,
+            credit: 0,
+            narration: 'Funds received into ' + payload.targetAccount,
+          },
+          {
+            accountName: payload.sourceAccount,
+            debit: 0,
+            credit: payload.amount,
+            narration: 'Funds transferred out from ' + payload.sourceAccount,
+          },
+        ],
+      },
+    },
+  });
+};
+
+/**
+ * Post General Journal Voucher (F7) - Multi-ledger Adjustments
+ */
+export const postJournalVoucherToAccounting = async (payload: JournalPostingPayload) => {
+  const totalDebit = payload.lines.reduce((s, l) => s + l.debit, 0);
+  const totalCredit = payload.lines.reduce((s, l) => s + l.credit, 0);
+
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    throw new Error('Total Debit must equal Total Credit. Debit: ' + totalDebit + ', Credit: ' + totalCredit);
+  }
+
+  await prisma.journalEntry.create({
+    data: {
+      companyId: payload.companyId,
+      voucherType: 'Journal',
+      voucherNo: payload.voucherNo,
+      entryDate: payload.date || new Date(),
+      narration: payload.narration || 'Journal adjustment voucher ' + payload.voucherNo,
+      lines: {
+        create: payload.lines.map((l) => ({
+          accountId: l.accountId || null,
+          accountName: l.accountName,
+          debit: l.debit,
+          credit: l.credit,
+          narration: l.narration || undefined,
+        })),
       },
     },
   });

@@ -34,20 +34,36 @@ export const getDashboardStats = async () => {
     const company = await prisma.company.findUnique({ where: { id: companyId } });
     const invoices = await prisma.invoice.findMany({ where: { companyId } });
     const purchases = await prisma.purchaseBill.findMany({ where: { companyId } });
+    const creditNotes = await prisma.creditNote.findMany({ where: { companyId, status: { not: "CANCELLED" } } });
+    const debitNotes = await prisma.debitNote.findMany({ where: { companyId, status: { not: "CANCELLED" } } });
     const itemsCount = await prisma.item.count({ where: { companyId } });
     const customersCount = await prisma.customer.count({ where: { companyId } });
     const vendorsCount = await prisma.vendor.count({ where: { companyId } });
 
     const totalInvoices = invoices.length;
-    const totalTaxable = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
-    const totalCgst = invoices.reduce((acc, inv) => acc + inv.cgstAmount, 0);
-    const totalSgst = invoices.reduce((acc, inv) => acc + inv.sgstAmount, 0);
-    const totalIgst = invoices.reduce((acc, inv) => acc + inv.igstAmount, 0);
-    const totalGstPayable = totalCgst + totalSgst + totalIgst;
-    const totalInvoiceValue = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
+    const rawTaxable = invoices.reduce((acc, inv) => acc + inv.taxableValue, 0);
+    const rawCgst = invoices.reduce((acc, inv) => acc + inv.cgstAmount, 0);
+    const rawSgst = invoices.reduce((acc, inv) => acc + inv.sgstAmount, 0);
+    const rawIgst = invoices.reduce((acc, inv) => acc + inv.igstAmount, 0);
 
-    const totalPurchaseValue = purchases.reduce((acc, p) => acc + p.totalAmount, 0);
-    const totalPurchaseTaxable = purchases.reduce((acc, p) => acc + p.taxableValue, 0);
+    const cnTaxable = creditNotes.reduce((acc, c) => acc + c.taxableValue, 0);
+    const cnCgst = creditNotes.reduce((acc, c) => acc + c.cgstAmount, 0);
+    const cnSgst = creditNotes.reduce((acc, c) => acc + c.sgstAmount, 0);
+    const cnIgst = creditNotes.reduce((acc, c) => acc + c.igstAmount, 0);
+    const cnTotalAmount = creditNotes.reduce((acc, c) => acc + c.totalAmount, 0);
+
+    const dnTaxable = debitNotes.reduce((acc, d) => acc + d.taxableValue, 0);
+    const dnTotalAmount = debitNotes.reduce((acc, d) => acc + d.totalAmount, 0);
+
+    const totalTaxable = Math.max(0, rawTaxable - cnTaxable);
+    const totalCgst = Math.max(0, rawCgst - cnCgst);
+    const totalSgst = Math.max(0, rawSgst - cnSgst);
+    const totalIgst = Math.max(0, rawIgst - cnIgst);
+    const totalGstPayable = totalCgst + totalSgst + totalIgst;
+    const totalInvoiceValue = Math.max(0, invoices.reduce((acc, inv) => acc + inv.totalAmount, 0) - cnTotalAmount);
+
+    const totalPurchaseValue = Math.max(0, purchases.reduce((acc, p) => acc + p.totalAmount, 0) - dnTotalAmount);
+    const totalPurchaseTaxable = Math.max(0, purchases.reduce((acc, p) => acc + p.taxableValue, 0) - dnTaxable);
 
     // Outstanding Receivables & Payables
     const customers = await prisma.customer.findMany({
@@ -55,12 +71,14 @@ export const getDashboardStats = async () => {
       include: {
         invoices: { select: { totalAmount: true } },
         receipts: { select: { amount: true } },
+        creditNotes: { select: { totalAmount: true } },
       },
     });
     const totalReceivable = customers.reduce((sum, c) => {
       const invSum = c.invoices.reduce((a, b) => a + b.totalAmount, 0);
       const recSum = c.receipts.reduce((a, b) => a + b.amount, 0);
-      return sum + (c.openingBalance + invSum - recSum);
+      const cnSum = c.creditNotes.reduce((a, b) => a + b.totalAmount, 0);
+      return sum + (c.openingBalance + invSum - recSum - cnSum);
     }, 0);
 
     const vendors = await prisma.vendor.findMany({
@@ -68,12 +86,14 @@ export const getDashboardStats = async () => {
       include: {
         purchaseBills: { select: { totalAmount: true } },
         payments: { select: { amount: true } },
+        debitNotes: { select: { totalAmount: true } },
       },
     });
     const totalPayable = vendors.reduce((sum, v) => {
       const purSum = v.purchaseBills.reduce((a, b) => a + b.totalAmount, 0);
       const paySum = v.payments.reduce((a, b) => a + b.amount, 0);
-      return sum + (v.openingBalance + purSum - paySum);
+      const dnSum = v.debitNotes.reduce((a, b) => a + b.totalAmount, 0);
+      return sum + (v.openingBalance + purSum - paySum - dnSum);
     }, 0);
 
     // Bank & Cash Balances from Accounts
@@ -175,6 +195,7 @@ export const getOutstanding = async () => {
       include: {
         invoices: { select: { totalAmount: true } },
         receipts: { select: { amount: true } },
+        creditNotes: { select: { totalAmount: true } },
       },
       orderBy: { code: "asc" },
     });
@@ -182,7 +203,8 @@ export const getOutstanding = async () => {
     const receivables = customers.map((c) => {
       const totalInvoiced = c.invoices.reduce((a, b) => a + b.totalAmount, 0);
       const totalReceived = c.receipts.reduce((a, b) => a + b.amount, 0);
-      const outstanding = c.openingBalance + totalInvoiced - totalReceived;
+      const totalCreditNotes = c.creditNotes.reduce((a, b) => a + b.totalAmount, 0);
+      const outstanding = c.openingBalance + totalInvoiced - totalReceived - totalCreditNotes;
       return {
         id: c.id,
         code: c.code,
@@ -190,6 +212,7 @@ export const getOutstanding = async () => {
         phone: c.phone,
         totalInvoiced,
         totalReceived,
+        totalCreditNotes,
         outstanding,
       };
     });
@@ -199,6 +222,7 @@ export const getOutstanding = async () => {
       include: {
         purchaseBills: { select: { totalAmount: true } },
         payments: { select: { amount: true } },
+        debitNotes: { select: { totalAmount: true } },
       },
       orderBy: { code: "asc" },
     });
@@ -206,7 +230,8 @@ export const getOutstanding = async () => {
     const payables = vendors.map((v) => {
       const totalPurchased = v.purchaseBills.reduce((a, b) => a + b.totalAmount, 0);
       const totalPaid = v.payments.reduce((a, b) => a + b.amount, 0);
-      const outstanding = v.openingBalance + totalPurchased - totalPaid;
+      const totalDebitNotes = v.debitNotes.reduce((a, b) => a + b.totalAmount, 0);
+      const outstanding = v.openingBalance + totalPurchased - totalPaid - totalDebitNotes;
       return {
         id: v.id,
         code: v.code,
@@ -214,6 +239,7 @@ export const getOutstanding = async () => {
         phone: v.phone,
         totalPurchased,
         totalPaid,
+        totalDebitNotes,
         outstanding,
       };
     });
@@ -255,37 +281,66 @@ export const getGstSummary = async () => {
     const purchases = await prisma.purchaseBill.findMany({
       where: { companyId, status: { not: "CANCELLED" } },
     });
+    const creditNotes = await prisma.creditNote.findMany({
+      where: { companyId, status: { not: "CANCELLED" } },
+    });
+    const debitNotes = await prisma.debitNote.findMany({
+      where: { companyId, status: { not: "CANCELLED" } },
+    });
 
-    // Outward Supplies (Sales)
-    const outwardTaxable = invoices.reduce((sum, inv) => sum + inv.taxableValue, 0);
-    const outwardCgst = invoices.reduce((sum, inv) => sum + inv.cgstAmount, 0);
-    const outwardSgst = invoices.reduce((sum, inv) => sum + inv.sgstAmount, 0);
-    const outwardIgst = invoices.reduce((sum, inv) => sum + inv.igstAmount, 0);
+    // Credit notes adjustments
+    const cnTaxable = creditNotes.reduce((sum, c) => sum + c.taxableValue, 0);
+    const cnCgst = creditNotes.reduce((sum, c) => sum + c.cgstAmount, 0);
+    const cnSgst = creditNotes.reduce((sum, c) => sum + c.sgstAmount, 0);
+    const cnIgst = creditNotes.reduce((sum, c) => sum + c.igstAmount, 0);
+    const cnTotalAmount = creditNotes.reduce((sum, c) => sum + c.totalAmount, 0);
+
+    // Debit notes adjustments (ITC Reversal)
+    const dnTaxable = debitNotes.reduce((sum, d) => sum + d.taxableValue, 0);
+    const dnCgst = debitNotes.reduce((sum, d) => sum + d.cgstAmount, 0);
+    const dnSgst = debitNotes.reduce((sum, d) => sum + d.sgstAmount, 0);
+    const dnIgst = debitNotes.reduce((sum, d) => sum + d.igstAmount, 0);
+
+    // Outward Supplies (Sales net of Credit Notes)
+    const rawOutwardTaxable = invoices.reduce((sum, inv) => sum + inv.taxableValue, 0);
+    const rawOutwardCgst = invoices.reduce((sum, inv) => sum + inv.cgstAmount, 0);
+    const rawOutwardSgst = invoices.reduce((sum, inv) => sum + inv.sgstAmount, 0);
+    const rawOutwardIgst = invoices.reduce((sum, inv) => sum + inv.igstAmount, 0);
+
+    const outwardTaxable = Math.max(0, rawOutwardTaxable - cnTaxable);
+    const outwardCgst = Math.max(0, rawOutwardCgst - cnCgst);
+    const outwardSgst = Math.max(0, rawOutwardSgst - cnSgst);
+    const outwardIgst = Math.max(0, rawOutwardIgst - cnIgst);
     const totalGstPayable = outwardCgst + outwardSgst + outwardIgst;
-    const totalInvoiceValue = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+    const totalInvoiceValue = Math.max(0, invoices.reduce((sum, inv) => sum + inv.totalAmount, 0) - cnTotalAmount);
 
     const intraSales = invoices.filter((i) => i.supplyType.includes("Intra"));
     const interSales = invoices.filter((i) => i.supplyType.includes("Inter"));
 
     const intraBreakup = {
-      taxable: intraSales.reduce((sum, i) => sum + i.taxableValue, 0),
-      cgst: intraSales.reduce((sum, i) => sum + i.cgstAmount, 0),
-      sgst: intraSales.reduce((sum, i) => sum + i.sgstAmount, 0),
+      taxable: Math.max(0, intraSales.reduce((sum, i) => sum + i.taxableValue, 0) - (cnCgst > 0 ? cnTaxable : 0)),
+      cgst: Math.max(0, intraSales.reduce((sum, i) => sum + i.cgstAmount, 0) - cnCgst),
+      sgst: Math.max(0, intraSales.reduce((sum, i) => sum + i.sgstAmount, 0) - cnSgst),
       igst: 0,
     };
 
     const interBreakup = {
-      taxable: interSales.reduce((sum, i) => sum + i.taxableValue, 0),
+      taxable: Math.max(0, interSales.reduce((sum, i) => sum + i.taxableValue, 0) - (cnIgst > 0 ? cnTaxable : 0)),
       cgst: 0,
       sgst: 0,
-      igst: interSales.reduce((sum, i) => sum + i.igstAmount, 0),
+      igst: Math.max(0, interSales.reduce((sum, i) => sum + i.igstAmount, 0) - cnIgst),
     };
 
-    // Inward Supplies (Purchases / Input Tax Credit)
-    const inwardTaxable = purchases.reduce((sum, p) => sum + p.taxableValue, 0);
-    const itmCgst = purchases.reduce((sum, p) => sum + p.cgstAmount, 0);
-    const itmSgst = purchases.reduce((sum, p) => sum + p.sgstAmount, 0);
-    const itmIgst = purchases.reduce((sum, p) => sum + p.igstAmount, 0);
+    // Inward Supplies (Purchases / Input Tax Credit net of Debit Notes)
+    const rawInwardTaxable = purchases.reduce((sum, p) => sum + p.taxableValue, 0);
+    const rawItmCgst = purchases.reduce((sum, p) => sum + p.cgstAmount, 0);
+    const rawItmSgst = purchases.reduce((sum, p) => sum + p.sgstAmount, 0);
+    const rawItmIgst = purchases.reduce((sum, p) => sum + p.igstAmount, 0);
+
+    const inwardTaxable = Math.max(0, rawInwardTaxable - dnTaxable);
+    const itmCgst = Math.max(0, rawItmCgst - dnCgst);
+    const itmSgst = Math.max(0, rawItmSgst - dnSgst);
+    const itmIgst = Math.max(0, rawItmIgst - dnIgst);
     const totalItc = itmCgst + itmSgst + itmIgst;
 
     // Net GST liability

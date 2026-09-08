@@ -23,6 +23,9 @@ import {
   X,
   PlusCircle,
   Settings2,
+  ArrowLeftRight,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 
 interface CommandItem {
@@ -42,12 +45,18 @@ const commands: CommandItem[] = [
   { title: "Customer Master (Sundry Debtors)", category: "Masters", href: "/masters/customers", icon: Users },
   { title: "Vendor Master (Sundry Creditors)", category: "Masters", href: "/masters/vendors", icon: Factory },
   { title: "Chart of Accounts (COA)", category: "Masters", href: "/masters/accounts", icon: BookOpen },
-  { title: "Create Sales Invoice (Tax Invoice)", category: "Vouchers", href: "/vouchers/sales", shortcut: "F8", icon: FileSpreadsheet },
-  { title: "Create Purchase Bill", category: "Vouchers", href: "/vouchers/purchase", shortcut: "F9", icon: Receipt },
+  { title: "Record Contra Voucher (Bank / Cash)", category: "Vouchers", href: "/vouchers/contra", shortcut: "F4", icon: ArrowLeftRight },
   { title: "Record Payment Voucher", category: "Vouchers", href: "/vouchers/payment", shortcut: "F5", icon: CreditCard },
   { title: "Record Receipt Voucher", category: "Vouchers", href: "/vouchers/receipt", shortcut: "F6", icon: Wallet },
+  { title: "Record Journal Voucher (Adjustment)", category: "Vouchers", href: "/vouchers/journal", shortcut: "F7", icon: BookOpen },
+  { title: "Create Sales Invoice (Tax Invoice)", category: "Vouchers", href: "/vouchers/sales", shortcut: "F8", icon: FileSpreadsheet },
+  { title: "Create Purchase Bill", category: "Vouchers", href: "/vouchers/purchase", shortcut: "F9", icon: Receipt },
+  { title: "Record Credit Note (Sales Return)", category: "Vouchers", href: "/vouchers/credit-note", shortcut: "Alt+F6", icon: Undo2 },
+  { title: "Record Debit Note (Purchase Return)", category: "Vouchers", href: "/vouchers/debit-note", shortcut: "Alt+F5", icon: Redo2 },
   { title: "Sales Register", category: "Registers", href: "/registers/sales", icon: BookMarked },
   { title: "Purchase Register", category: "Registers", href: "/registers/purchase", icon: BookMarked },
+  { title: "Credit Note Register", category: "Registers", href: "/registers/credit-notes", icon: Undo2 },
+  { title: "Debit Note Register", category: "Registers", href: "/registers/debit-notes", icon: Redo2 },
   { title: "Day Book (General Journal)", category: "Registers", href: "/registers/daybook", icon: BookOpen },
   { title: "Outstanding (Receivable / Payable)", category: "Reports", href: "/reports/outstanding", icon: Clock },
   { title: "GST Summary (GSTR-1 & 3B)", category: "Reports", href: "/reports/gst-summary", icon: Landmark },
@@ -56,7 +65,7 @@ const commands: CommandItem[] = [
   { title: "Balance Sheet", category: "Reports", href: "/reports/balance-sheet", icon: Coins },
 ];
 
-export function CommandPalette() {
+export const CommandPalette = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
@@ -81,6 +90,20 @@ export function CommandPalette() {
         return;
       }
 
+      // Alt+F5: Debit Note
+      if (e.altKey && e.key === "F5") {
+        e.preventDefault();
+        router.push("/vouchers/debit-note" as any);
+        return;
+      }
+
+      // Alt+F6: Credit Note
+      if (e.altKey && e.key === "F6") {
+        e.preventDefault();
+        router.push("/vouchers/credit-note" as any);
+        return;
+      }
+
       // Direct Function keys
       if (!e.ctrlKey && !e.altKey && !e.metaKey) {
         if (e.key === "F1") {
@@ -89,18 +112,24 @@ export function CommandPalette() {
         } else if (e.key === "F3") {
           e.preventDefault();
           router.push("/companies/create" as any);
-        } else if (e.key === "F8") {
+        } else if (e.key === "F4") {
           e.preventDefault();
-          router.push("/vouchers/sales" as any);
-        } else if (e.key === "F9") {
-          e.preventDefault();
-          router.push("/vouchers/purchase" as any);
+          router.push("/vouchers/contra" as any);
         } else if (e.key === "F5") {
           e.preventDefault();
           router.push("/vouchers/payment" as any);
         } else if (e.key === "F6") {
           e.preventDefault();
           router.push("/vouchers/receipt" as any);
+        } else if (e.key === "F7") {
+          e.preventDefault();
+          router.push("/vouchers/journal" as any);
+        } else if (e.key === "F8") {
+          e.preventDefault();
+          router.push("/vouchers/sales" as any);
+        } else if (e.key === "F9") {
+          e.preventDefault();
+          router.push("/vouchers/purchase" as any);
         }
       }
     };

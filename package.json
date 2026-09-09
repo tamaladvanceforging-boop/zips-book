@@ -1,6 +1,7 @@
 {
   "name": "zips-book",
   "version": "1.0.0",
+  "description": "ZIPS-Book Enterprise ERP & Billing System",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -9,7 +10,7 @@
     "start": "next start",
     "electron:dev": "concurrently -k -s first \"next dev\" \"electron .\"",
     "electron:start": "electron .",
-    "electron:build": "bun run build && electron-builder --win",
+    "electron:build": "bun run build && node scripts/prepare-standalone.cjs && electron-builder --win",
     "lint": "eslint && echo \"✓ Lint passed\"",
     "lint:check": "next typegen && tsc --noEmit && echo \"✓ Type check passed\" && eslint && echo \"✓ Lint passed\"",
     "migrate": "prisma migrate dev && prisma generate",
@@ -88,6 +89,7 @@
       "public/**/*",
       "prisma/dev.db"
     ],
+    "asar": false,
     "win": {
       "target": [
         {

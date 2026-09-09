@@ -6,6 +6,10 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    plugins: {
+      ...nextVitals[0].plugins,
+      ...nextTs[0].plugins,
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/set-state-in-effect": "off",
@@ -23,6 +27,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "dist/**",
     "electron/**",
+    "scripts/**",
     "next-env.d.ts",
     "generated/**",
   ]),

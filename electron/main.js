@@ -2,12 +2,23 @@ const { app, BrowserWindow, Menu, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
-const { fork } = require("child_process");
+const { spawn } = require("child_process");
 
 let mainWindow = null;
 let serverProcess = null;
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 const DEV_PORT = process.env.PORT || 3000;
+
+const logDesktop = (msg) => {
+  try {
+    const userDataPath = app.getPath("userData");
+    const logDir = path.join(userDataPath, "logs");
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    fs.appendFileSync(path.join(logDir, "desktop.log"), `[${new Date().toISOString()}] ${msg}\n`);
+  } catch {}
+};
 
 // Poll local URL until Next.js server is ready
 const waitForServer = (url, timeoutMs = 45000) => {
@@ -31,6 +42,7 @@ const waitForServer = (url, timeoutMs = 45000) => {
 
     const retry = () => {
       if (Date.now() - startTime > timeoutMs) {
+        logDesktop(`Timeout waiting for server at ${url}`);
         reject(new Error(`Timeout waiting for server at ${url}`));
       } else {
         setTimeout(check, 800);
@@ -51,8 +63,18 @@ const startProductionServer = (port) => {
 
   const dbPath = path.join(dbDir, "zips_book_data.db");
 
-  // Copy template database if first time run
-  const templateDb = path.join(__dirname, "../prisma/dev.db");
+  // Locate template DB
+  let templateDb = path.join(__dirname, "../prisma/dev.db");
+  if (app.isPackaged) {
+    const unpackedDb = path.join(process.resourcesPath, "app.asar.unpacked/prisma/dev.db");
+    const directDb = path.join(process.resourcesPath, "app/prisma/dev.db");
+    if (fs.existsSync(unpackedDb)) {
+      templateDb = unpackedDb;
+    } else if (fs.existsSync(directDb)) {
+      templateDb = directDb;
+    }
+  }
+
   if (!fs.existsSync(dbPath) && fs.existsSync(templateDb)) {
     try {
       fs.copyFileSync(templateDb, dbPath);
@@ -61,7 +83,17 @@ const startProductionServer = (port) => {
     }
   }
 
-  const standaloneServer = path.join(__dirname, "../.next/standalone/server.js");
+  let standaloneServer = path.join(__dirname, "../.next/standalone/server.js");
+  if (app.isPackaged) {
+    const unpackedServer = path.join(process.resourcesPath, "app.asar.unpacked/.next/standalone/server.js");
+    const directServer = path.join(process.resourcesPath, "app/.next/standalone/server.js");
+    if (fs.existsSync(unpackedServer)) {
+      standaloneServer = unpackedServer;
+    } else if (fs.existsSync(directServer)) {
+      standaloneServer = directServer;
+    }
+  }
+
   const formattedDbUrl = `file:${dbPath.replace(/\\/g, "/")}`;
 
   const env = {
@@ -70,12 +102,13 @@ const startProductionServer = (port) => {
     HOSTNAME: "localhost",
     NODE_ENV: "production",
     DATABASE_URL: formattedDbUrl,
+    ELECTRON_RUN_AS_NODE: "1",
   };
 
-  serverProcess = fork(standaloneServer, [], {
+  serverProcess = spawn(process.execPath, [standaloneServer], {
     env,
     stdio: "inherit",
-    cwd: path.join(__dirname, "../.next/standalone"),
+    cwd: path.dirname(standaloneServer),
   });
 
   serverProcess.on("error", (err) => {
@@ -258,14 +291,6 @@ const createMainWindow = async () => {
 
   createApplicationMenu();
 
-  try {
-    await waitForServer(targetUrl);
-    await mainWindow.loadURL(targetUrl);
-  } catch (err) {
-    console.error("Error loading server:", err);
-    await mainWindow.loadURL(targetUrl);
-  }
-
   mainWindow.once("ready-to-show", () => {
     if (mainWindow) {
       mainWindow.show();
@@ -274,6 +299,18 @@ const createMainWindow = async () => {
       }
     }
   });
+
+  try {
+    await waitForServer(targetUrl);
+    await mainWindow.loadURL(targetUrl);
+  } catch (err) {
+    console.error("Error loading server:", err);
+    await mainWindow.loadURL(targetUrl);
+  }
+
+  if (mainWindow && !mainWindow.isVisible()) {
+    mainWindow.show();
+  }
 
   mainWindow.on("closed", () => {
     mainWindow = null;

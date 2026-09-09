@@ -90,6 +90,9 @@
       "prisma/dev.db"
     ],
     "asar": false,
+    "electronFuses": {
+      "runAsNode": true
+    },
     "win": {
       "target": [
         {

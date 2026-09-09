@@ -20,6 +20,14 @@ if (fs.existsSync(publicSrc)) {
   console.log("Copied public to .next/standalone/public");
 }
 
+const prismaSrc = path.join(root, "prisma");
+const prismaDest = path.join(root, ".next", "standalone", "prisma");
+if (fs.existsSync(prismaSrc)) {
+  fs.mkdirSync(prismaDest, { recursive: true });
+  fs.cpSync(prismaSrc, prismaDest, { recursive: true });
+  console.log("Copied prisma to .next/standalone/prisma");
+}
+
 // Dereference and replace any Windows symlinks or junctions with real directories
 const replaceSymlinks = (dir) => {
   if (!fs.existsSync(dir)) return;

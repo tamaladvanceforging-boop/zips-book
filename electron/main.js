@@ -1,8 +1,7 @@
-const { app, BrowserWindow, Menu, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, shell, utilityProcess } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
-const { spawn } = require("child_process");
 
 let mainWindow = null;
 let serverProcess = null;
@@ -56,42 +55,55 @@ const waitForServer = (url, timeoutMs = 45000) => {
 // Start standalone Next.js server in production mode
 const startProductionServer = (port) => {
   const userDataPath = app.getPath("userData");
-  const dbDir = path.join(userDataPath, "databases");
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+  if (!fs.existsSync(userDataPath)) {
+    fs.mkdirSync(userDataPath, { recursive: true });
   }
 
-  const dbPath = path.join(dbDir, "zips_book_data.db");
+  const dbPath = path.join(userDataPath, "zips_book_data.db");
 
-  // Locate template DB
-  let templateDb = path.join(__dirname, "../prisma/dev.db");
-  if (app.isPackaged) {
-    const unpackedDb = path.join(process.resourcesPath, "app.asar.unpacked/prisma/dev.db");
-    const directDb = path.join(process.resourcesPath, "app/prisma/dev.db");
-    if (fs.existsSync(unpackedDb)) {
-      templateDb = unpackedDb;
-    } else if (fs.existsSync(directDb)) {
-      templateDb = directDb;
+  // Multi-candidate search for template DB
+  const candidateTemplates = [
+    path.join(process.resourcesPath || "", "app/prisma/dev.db"),
+    path.join(process.resourcesPath || "", "app.asar.unpacked/prisma/dev.db"),
+    path.join(process.resourcesPath || "", "prisma/dev.db"),
+    path.join(__dirname, "../prisma/dev.db"),
+    path.join(__dirname, "../.next/standalone/prisma/dev.db"),
+    path.join(__dirname, "../../prisma/dev.db"),
+    path.join(process.cwd(), "prisma/dev.db"),
+  ];
+
+  let templateDb = candidateTemplates.find((p) => p && fs.existsSync(p));
+  logDesktop(`Resolved template DB: ${templateDb || "NONE"}`);
+  logDesktop(`Target DB path: ${dbPath}`);
+
+  if (!fs.existsSync(dbPath)) {
+    if (templateDb && fs.existsSync(templateDb)) {
+      try {
+        fs.copyFileSync(templateDb, dbPath);
+        logDesktop(`Successfully copied template DB from ${templateDb} to ${dbPath}`);
+      } catch (err) {
+        logDesktop(`Failed to copy template DB: ${err.message}`);
+        console.error("Failed to copy template database:", err);
+      }
+    } else {
+      logDesktop(`Warning: Template DB not found in candidate paths.`);
     }
+  } else {
+    logDesktop(`Database already exists at ${dbPath}`);
   }
 
-  if (!fs.existsSync(dbPath) && fs.existsSync(templateDb)) {
-    try {
-      fs.copyFileSync(templateDb, dbPath);
-    } catch (err) {
-      console.error("Failed to copy template database:", err);
-    }
-  }
+  // Multi-candidate search for standalone server.js
+  const candidateServers = [
+    path.join(process.resourcesPath || "", "app/.next/standalone/server.js"),
+    path.join(process.resourcesPath || "", "app.asar.unpacked/.next/standalone/server.js"),
+    path.join(__dirname, "../.next/standalone/server.js"),
+    path.join(__dirname, "../../.next/standalone/server.js"),
+    path.join(process.cwd(), ".next/standalone/server.js"),
+  ];
 
-  let standaloneServer = path.join(__dirname, "../.next/standalone/server.js");
-  if (app.isPackaged) {
-    const unpackedServer = path.join(process.resourcesPath, "app.asar.unpacked/.next/standalone/server.js");
-    const directServer = path.join(process.resourcesPath, "app/.next/standalone/server.js");
-    if (fs.existsSync(unpackedServer)) {
-      standaloneServer = unpackedServer;
-    } else if (fs.existsSync(directServer)) {
-      standaloneServer = directServer;
-    }
+  let standaloneServer = candidateServers.find((p) => p && fs.existsSync(p));
+  if (!standaloneServer) {
+    standaloneServer = path.join(__dirname, "../.next/standalone/server.js");
   }
 
   const formattedDbUrl = `file:${dbPath.replace(/\\/g, "/")}`;
@@ -102,18 +114,41 @@ const startProductionServer = (port) => {
     HOSTNAME: "localhost",
     NODE_ENV: "production",
     DATABASE_URL: formattedDbUrl,
-    ELECTRON_RUN_AS_NODE: "1",
   };
 
-  serverProcess = spawn(process.execPath, [standaloneServer], {
-    env,
-    stdio: "inherit",
-    cwd: path.dirname(standaloneServer),
-  });
+  logDesktop(`Starting standalone server via utilityProcess: ${standaloneServer}`);
 
-  serverProcess.on("error", (err) => {
-    console.error("Production server process error:", err);
-  });
+  try {
+    serverProcess = utilityProcess.fork(standaloneServer, [], {
+      env,
+      cwd: path.dirname(standaloneServer),
+      stdio: "pipe",
+    });
+
+    serverProcess.on("spawn", () => {
+      logDesktop("UtilityProcess server spawned successfully");
+    });
+
+    serverProcess.stdout?.on("data", (chunk) => {
+      logDesktop(`[Server STDOUT] ${chunk.toString().trim()}`);
+    });
+
+    serverProcess.stderr?.on("data", (chunk) => {
+      logDesktop(`[Server STDERR] ${chunk.toString().trim()}`);
+    });
+
+    serverProcess.on("error", (err) => {
+      logDesktop(`UtilityProcess error: ${err.message || err}`);
+      console.error("Production server process error:", err);
+    });
+
+    serverProcess.on("exit", (code) => {
+      logDesktop(`UtilityProcess server exited with code: ${code}`);
+    });
+  } catch (spawnErr) {
+    logDesktop(`Failed to fork utilityProcess: ${spawnErr.message}`);
+    console.error("Failed to fork utilityProcess:", spawnErr);
+  }
 };
 
 // Build application native top menu
@@ -305,7 +340,40 @@ const createMainWindow = async () => {
     await mainWindow.loadURL(targetUrl);
   } catch (err) {
     console.error("Error loading server:", err);
-    await mainWindow.loadURL(targetUrl);
+    logDesktop(`Error loading server: ${err.message || err}`);
+    try {
+      await mainWindow.loadURL(`${targetUrl}/auth/login`);
+    } catch (retryErr) {
+      logDesktop(`Error loading auth/login fallback: ${retryErr.message || retryErr}`);
+      try {
+        const errHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>ZIPS-Book ERP Startup</title>
+            <style>
+              body { background: #090d16; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+              .card { background: #0f172a; border: 1px solid #1e293b; padding: 2.5rem; border-radius: 1rem; max-width: 500px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+              h2 { color: #10b981; margin-bottom: 0.5rem; font-size: 1.5rem; }
+              p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; }
+              button { margin-top: 1.5rem; background: #059669; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }
+              button:hover { background: #047857; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h2>ZIPS-Book Enterprise ERP</h2>
+              <p>Starting local accounting service and database...</p>
+              <p style="font-size: 0.8rem; color: #64748b;">Please wait a moment or click Retry below.</p>
+              <button onclick="window.location.href='${targetUrl}'">Retry Connection</button>
+            </div>
+          </body>
+          </html>
+        `;
+        await mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errHtml)}`);
+      } catch {}
+    }
   }
 
   if (mainWindow && !mainWindow.isVisible()) {
@@ -353,7 +421,9 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   if (serverProcess) {
-    serverProcess.kill("SIGINT");
+    try {
+      serverProcess.kill();
+    } catch {}
   }
 });
 

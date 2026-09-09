@@ -15,17 +15,10 @@ export const middleware = (request: NextRequest) => {
     pathname.startsWith('/company') ||
     pathname.startsWith('/companies');
 
-  // Auth pages
-  const isAuthPage = pathname.startsWith('/auth');
-
   if (isProtected && !sessionToken) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (isAuthPage && sessionToken) {
-    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();
